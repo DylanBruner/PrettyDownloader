@@ -12,12 +12,12 @@ COPY server.py .
 
 # Create libs directory and copy library files
 RUN mkdir -p libs
-COPY libs/tpbclient.py ./libs/
 COPY libs/users.py ./libs/
 COPY libs/logs.py ./libs/
 COPY libs/settings.py ./libs/
 COPY libs/providers/ ./libs/providers/
 COPY libs/passkeys.py ./libs/
+COPY libs/tmdbclient.py ./libs/
 COPY static/ ./static/
 
 # Create directories for persistent data
