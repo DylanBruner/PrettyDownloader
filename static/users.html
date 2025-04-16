@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PrettyDownloader - User Management</title>
+
+  <!-- Favicon -->
+  <link rel="icon" href="/static/img/favicon.png" type="image/png">
+
+  <!-- Tailwind CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Custom CSS -->
+  <link href="/static/css/style.css" rel="stylesheet">
+
+  <!-- Alpine.js -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.10.3/dist/cdn.min.js" defer></script>
+</head>
+<body class="flex flex-col min-h-screen">
+  <!-- The sidebar will be dynamically inserted by sidebar.js -->
+
+  <!-- Main content -->
+  <div class="flex-1 ml-0 md:ml-64 transition-all duration-300">
+    <!-- The topbar will be dynamically inserted by topbar.js -->
+
+    <!-- Page content -->
+    <main class="p-4 md:p-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Users list -->
+        <div class="lg:col-span-2">
+          <div class="card p-4">
+            <h2 class="text-xl font-semibold mb-4">Users</h2>
+            <div id="users-list" class="mt-4">
+              <div class="flex justify-center p-8">
+                <div class="loader"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Add user form -->
+        <div class="lg:col-span-1">
+          <div class="card p-4">
+            <h2 class="text-xl font-semibold mb-4">Add New User</h2>
+            <form id="add-user-form">
+              <div class="mb-4">
+                <label for="new-username" class="block text-sm font-medium mb-2">Username</label>
+                <input type="text" id="new-username" class="form-input w-full" required>
+              </div>
+
+              <div class="mb-4">
+                <label for="new-password" class="block text-sm font-medium mb-2">Password</label>
+                <input type="password" id="new-password" class="form-input w-full" required>
+              </div>
+
+              <div class="mb-6">
+                <label class="flex items-center">
+                  <input type="checkbox" id="new-is-admin" class="mr-2">
+                  <span>Admin privileges</span>
+                </label>
+              </div>
+
+              <button type="submit" class="btn btn-primary w-full">
+                <i class="fas fa-user-plus mr-2"></i> Add User
+              </button>
+            </form>
+          </div>
+
+          <!-- User stats -->
+          <div class="card p-4 mt-6">
+            <h2 class="text-xl font-semibold mb-4">User Statistics</h2>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="bg-gray-700 rounded-lg p-4 text-center">
+                <div class="text-3xl font-bold mb-2" id="total-users-count">0</div>
+                <div class="text-sm text-gray-400">Total Users</div>
+              </div>
+              <div class="bg-gray-700 rounded-lg p-4 text-center">
+                <div class="text-3xl font-bold mb-2" id="admin-users-count">0</div>
+                <div class="text-sm text-gray-400">Admins</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 p-4 text-center text-gray-400 text-sm">
+      <p></p>
+    </footer>
+  </div>
+
+  <!-- Change Password Modal -->
+  <div id="change-password-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
+    <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+    <div class="card p-6 max-w-md w-full z-10">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold">Change Password</h3>
+        <button onclick="hideChangePasswordModal()" class="text-gray-400 hover:text-white">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <p class="mb-4">Change password for: <span id="change-password-username" class="font-semibold"></span></p>
+
+      <form id="change-password-form" class="mt-4">
+        <div class="mb-4">
+          <label for="new-password" class="block text-sm font-medium mb-2">New Password</label>
+          <input type="password" id="change-password-input" class="form-input w-full" required>
+        </div>
+
+        <div class="flex justify-end gap-2 mt-6">
+          <button
+            type="button"
+            onclick="hideChangePasswordModal()"
+            class="btn bg-gray-600 text-white hover:bg-gray-700"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="btn btn-primary"
+          >
+            <i class="fas fa-save mr-1"></i> Save
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Custom JavaScript -->
+  <script src="/static/js/sidebar.js"></script>
+  <script src="/static/js/topbar.js"></script>
+  <script src="/static/js/app.js"></script>
+
+  <!-- Page-specific JavaScript -->
+  <script>
+    // Direct API call to fetch users
+    document.addEventListener('DOMContentLoaded', async function() {
+      console.log('Users page loaded');
+
+      // Check if user is admin
+      const authResponse = await fetch('/api/auth/status');
+      const authData = await authResponse.json();
+
+      if (authData.authenticated && authData.is_admin) {
+        console.log('User is authenticated and admin, fetching users');
+
+        try {
+          // Fetch users directly
+          const response = await fetch('/api/users');
+          const data = await response.json();
+
+          console.log('Users API response:', data);
+
+          if (data.success) {
+            displayUsersList(data.users);
+            updateUserStats(data.users);
+          } else {
+            document.getElementById('users-list').innerHTML =
+              '<div class="text-center p-8 text-red-500">Error fetching users</div>';
+          }
+        } catch (error) {
+          console.error('Error fetching users:', error);
+          document.getElementById('users-list').innerHTML =
+            '<div class="text-center p-8 text-red-500">Error fetching users. Please try again.</div>';
+        }
+
+        // Set up add user form
+        const addUserForm = document.getElementById('add-user-form');
+        if (addUserForm) {
+          addUserForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const username = document.getElementById('new-username').value.trim();
+            const password = document.getElementById('new-password').value.trim();
+            const isAdmin = document.getElementById('new-is-admin').checked;
+
+            if (!username || !password) {
+              alert('Username and password are required');
+              return;
+            }
+
+            try {
+              const response = await fetch('/api/users', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  username: username,
+                  password: password,
+                  is_admin: isAdmin
+                })
+              });
+
+              const data = await response.json();
+
+              if (data.success) {
+                alert('User created successfully');
+
+                // Clear form
+                document.getElementById('new-username').value = '';
+                document.getElementById('new-password').value = '';
+                document.getElementById('new-is-admin').checked = false;
+
+                // Refresh users list
+                location.reload();
+              } else {
+                alert(data.message || 'Failed to create user');
+              }
+            } catch (error) {
+              console.error('Error creating user:', error);
+              alert('Error creating user');
+            }
+          });
+        }
+      }
+    });
+
+    // Display users list
+    function displayUsersList(users) {
+      const usersList = document.getElementById('users-list');
+
+      if (!users || users.length === 0) {
+        usersList.innerHTML = '<div class="text-center p-8">No users found</div>';
+        return;
+      }
+
+      let html = `
+        <div class="overflow-x-auto">
+          <table class="table w-full">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Admin</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      users.forEach(user => {
+        html += `
+          <tr>
+            <td>${user.username}</td>
+            <td>${user.is_admin ? '<span class="text-green-500"><i class="fas fa-check"></i></span>' : '<span class="text-red-500"><i class="fas fa-times"></i></span>'}</td>
+            <td class="flex space-x-2">
+              <button
+                class="text-blue-500 hover:text-blue-700"
+                onclick="showChangePasswordModal('${user.username}')"
+                title="Change password"
+              >
+                <i class="fas fa-key"></i>
+              </button>
+              <button
+                class="text-red-500 hover:text-red-700"
+                onclick="deleteUser('${user.username}')"
+                title="Delete user"
+              >
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+
+      html += `
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      usersList.innerHTML = html;
+    }
+
+    // Delete user
+    async function deleteUser(username) {
+      if (!confirm(`Are you sure you want to delete user "${username}"?`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/users/${username}`, {
+          method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert('User deleted successfully');
+          location.reload();
+        } else {
+          alert(data.message || 'Failed to delete user');
+        }
+      } catch (error) {
+        console.error('Error deleting user:', error);
+        alert('Error deleting user');
+      }
+    }
+
+    // Show change password modal
+    function showChangePasswordModal(username) {
+      const modal = document.getElementById('change-password-modal');
+      const usernameSpan = document.getElementById('change-password-username');
+      const form = document.getElementById('change-password-form');
+
+      // Set username
+      usernameSpan.textContent = username;
+      form.setAttribute('data-username', username);
+
+      // Clear password field
+      document.getElementById('change-password-input').value = '';
+
+      // Show modal
+      modal.classList.remove('hidden');
+    }
+
+    // Hide change password modal
+    function hideChangePasswordModal() {
+      const modal = document.getElementById('change-password-modal');
+      modal.classList.add('hidden');
+    }
+
+    // Setup change password form
+    document.addEventListener('DOMContentLoaded', function() {
+      const changePasswordForm = document.getElementById('change-password-form');
+
+      if (changePasswordForm) {
+        changePasswordForm.addEventListener('submit', async function(e) {
+          e.preventDefault();
+
+          const username = this.getAttribute('data-username');
+          const newPassword = document.getElementById('change-password-input').value.trim();
+
+          if (!newPassword) {
+            alert('New password is required');
+            return;
+          }
+
+          try {
+            const response = await fetch(`/api/users/${username}/change-password`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                new_password: newPassword
+              })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+              alert('Password changed successfully');
+              hideChangePasswordModal();
+            } else {
+              alert(data.message || 'Failed to change password');
+            }
+          } catch (error) {
+            console.error('Error changing password:', error);
+            alert('Error changing password');
+          }
+        });
+      }
+    });
+
+    // Update user stats
+    function updateUserStats(users) {
+      if (!users) {
+        document.getElementById('total-users-count').textContent = '0';
+        document.getElementById('admin-users-count').textContent = '0';
+        return;
+      }
+
+      const totalUsers = users.length;
+      const adminUsers = users.filter(user => user.is_admin).length;
+
+      document.getElementById('total-users-count').textContent = totalUsers;
+      document.getElementById('admin-users-count').textContent = adminUsers;
+    }
+  </script>
+</body>
+</html>

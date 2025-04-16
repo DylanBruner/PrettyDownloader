@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PrettyDownloader - Search</title>
+
+  <!-- Favicon -->
+  <link rel="icon" href="/static/img/favicon.png" type="image/png">
+
+  <!-- Tailwind CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Custom CSS -->
+  <link href="/static/css/style.css" rel="stylesheet">
+
+  <!-- Alpine.js -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.10.3/dist/cdn.min.js" defer></script>
+</head>
+<body class="flex flex-col min-h-screen">
+  <!-- The sidebar will be dynamically inserted by sidebar.js -->
+
+  <!-- Main content -->
+  <div class="flex-1 ml-0 md:ml-64 transition-all duration-300">
+    <!-- The topbar will be dynamically inserted by topbar.js -->
+
+    <!-- Page content -->
+    <main class="p-4 md:p-6">
+      <!-- Search form -->
+      <div class="card p-6 mb-6">
+        <form id="search-form" class="flex flex-col md:flex-row gap-4">
+          <div class="flex-1">
+            <input
+              type="text"
+              id="search-input"
+              class="form-input w-full"
+              placeholder="Search for movies, TV shows, music, games, software..."
+              required
+            >
+          </div>
+          <div class="w-full md:w-auto">
+            <select id="media-type-filter" class="form-input w-full">
+              <option value="all">All</option>
+              <option value="movie">Movies</option>
+              <option value="tv">TV Shows</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary flex items-center justify-center">
+            <i class="fas fa-search mr-2"></i> Search
+          </button>
+        </form>
+      </div>
+
+      <!-- Search results -->
+      <div id="search-results" class="mt-6">
+        <div class="text-center p-8 text-gray-400">
+          <i class="fas fa-search text-5xl mb-4"></i>
+          <p>Search for content to download</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 p-4 text-center text-gray-400 text-sm">
+      <p></p>
+    </footer>
+  </div>
+
+  <!-- Download Modal -->
+  <div id="download-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
+    <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+    <div class="card p-6 max-w-md w-full z-10">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold">Download Torrent</h3>
+        <button onclick="document.getElementById('download-modal').classList.add('hidden')" class="text-gray-400 hover:text-white">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <p class="mb-4">You are about to download:</p>
+      <p id="download-name" class="font-semibold mb-4 break-words"></p>
+
+      <form id="download-form" class="mt-4">
+        <div class="mb-4">
+          <label for="download-path" class="block text-sm font-medium mb-2">Save to:</label>
+          <select id="download-path" class="form-input w-full">
+            <option value="/media/movies">/media/movies</option>
+            <option value="/media/shows">/media/shows</option>
+          </select>
+        </div>
+
+        <div class="flex justify-end gap-2 mt-6">
+          <button
+            type="button"
+            onclick="document.getElementById('download-modal').classList.add('hidden')"
+            class="btn bg-gray-600 text-white hover:bg-gray-700"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onclick="submitDownload(document.getElementById('download-path').value)"
+            class="btn btn-primary"
+          >
+            <i class="fas fa-download mr-1"></i> Download
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Custom JavaScript -->
+  <script src="/static/js/sidebar.js"></script>
+  <script src="/static/js/topbar.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

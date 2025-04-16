@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PrettyDownloader - Login</title>
+
+  <!-- Favicon -->
+  <link rel="icon" href="/static/img/favicon.png" type="image/png">
+
+  <!-- Tailwind CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Custom CSS -->
+  <link href="/static/css/style.css" rel="stylesheet">
+
+  <style>
+    .login-container {
+      background-color: var(--card-bg);
+      border-radius: 0.5rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    .login-form input {
+      background-color: var(--darker-bg);
+      border: 1px solid var(--border-color);
+      color: var(--light-text);
+    }
+
+    .login-form input:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.3);
+    }
+
+    .login-btn {
+      background-color: var(--primary-color);
+      color: white;
+      transition: all 0.2s ease;
+    }
+
+    .login-btn:hover {
+      background-color: var(--primary-dark);
+    }
+
+    .login-logo {
+      color: var(--primary-color);
+    }
+
+    .login-page {
+      background: linear-gradient(135deg, var(--darker-bg) 0%, var(--dark-bg) 100%);
+    }
+
+    .particles {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      background-color: rgba(229, 62, 62, 0.2);
+      animation: float 15s infinite ease-in-out;
+    }
+
+    @keyframes float {
+      0%, 100% {
+        transform: translateY(0) translateX(0);
+      }
+      25% {
+        transform: translateY(-30px) translateX(30px);
+      }
+      50% {
+        transform: translateY(-15px) translateX(-20px);
+      }
+      75% {
+        transform: translateY(30px) translateX(10px);
+      }
+    }
+  </style>
+</head>
+<body class="login-page min-h-screen flex items-center justify-center p-4">
+  <!-- Animated background particles -->
+  <div class="particles">
+    <div class="particle" style="width: 100px; height: 100px; top: 10%; left: 10%; opacity: 0.1; animation-delay: 0s;"></div>
+    <div class="particle" style="width: 150px; height: 150px; top: 20%; left: 70%; opacity: 0.15; animation-delay: 2s;"></div>
+    <div class="particle" style="width: 80px; height: 80px; top: 60%; left: 30%; opacity: 0.1; animation-delay: 4s;"></div>
+    <div class="particle" style="width: 120px; height: 120px; top: 70%; left: 80%; opacity: 0.12; animation-delay: 6s;"></div>
+    <div class="particle" style="width: 200px; height: 200px; top: 40%; left: 50%; opacity: 0.08; animation-delay: 8s;"></div>
+  </div>
+
+  <div class="login-container w-full max-w-md p-8 fade-in">
+    <div class="text-center mb-8">
+      <div class="flex items-center justify-center mb-4">
+        <i class="fas fa-download login-logo text-5xl"></i>
+      </div>
+      <h1 class="text-2xl font-bold">PrettyDownloader</h1>
+      <p class="text-gray-400 mt-2">Sign in to your account</p>
+    </div>
+
+    <form id="login-form" class="login-form">
+      <div class="mb-4">
+        <label for="username" class="block text-sm font-medium mb-2">Username</label>
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <i class="fas fa-user text-gray-500"></i>
+          </div>
+          <input type="text" id="username" name="username" class="w-full py-2 pl-10 pr-3 rounded-md focus:outline-none" placeholder="Enter your username" required>
+        </div>
+      </div>
+
+      <div class="mb-6">
+        <label for="password" class="block text-sm font-medium mb-2">Password</label>
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <i class="fas fa-lock text-gray-500"></i>
+          </div>
+          <input type="password" id="password" name="password" class="w-full py-2 pl-10 pr-3 rounded-md focus:outline-none" placeholder="Enter your password" required>
+        </div>
+      </div>
+
+      <button type="submit" class="login-btn w-full py-2 px-4 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+        Sign In with Password
+      </button>
+    </form>
+
+    <div class="mt-4 text-center">
+      <p class="text-gray-400 text-sm mb-2">- OR -</p>
+      <button id="smart-passkey-login-btn" class="login-btn w-full py-2 px-4 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+        <i class="fas fa-fingerprint mr-2"></i> Sign In with Passkey
+      </button>
+    </div>
+
+    <div class="mt-6 text-center text-sm text-gray-400">
+      <p>Default credentials: admin / admin</p>
+    </div>
+  </div>
+
+  <!-- Custom JavaScript -->
+  <script src="/static/js/sidebar.js"></script>
+  <script src="/static/js/app.js"></script>
+
+  <!-- Passkey JavaScript -->
+  <script>
+    // Check if WebAuthn is supported
+    const isWebAuthnSupported = () => {
+      return window.PublicKeyCredential !== undefined;
+    };
+
+    // Convert base64url to ArrayBuffer
+    const base64urlToArrayBuffer = (base64url) => {
+      const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+      const padLen = (4 - (base64.length % 4)) % 4;
+      const padded = base64.padEnd(base64.length + padLen, '=');
+      const binary = atob(padded);
+      const buffer = new ArrayBuffer(binary.length);
+      const bytes = new Uint8Array(buffer);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return buffer;
+    };
+
+    // Convert ArrayBuffer to base64url
+    const arrayBufferToBase64url = (buffer) => {
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = btoa(binary);
+      return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    };
+
+    // Handle passkey login
+    const handlePasskeyLogin = async () => {
+      if (!isWebAuthnSupported()) {
+        showToast('Your browser does not support passkeys', 'error');
+        return;
+      }
+
+      // Get username from input
+      const username = document.getElementById('username').value.trim();
+      if (!username) {
+        showToast('Please enter your username', 'warning');
+        return;
+      }
+
+      try {
+        // Get authentication options from server
+        const optionsResponse = await fetch('/api/passkeys/authenticate/options', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ username })
+        });
+
+        const optionsData = await optionsResponse.json();
+
+        if (!optionsData.success) {
+          showToast(optionsData.message || 'Failed to get authentication options', 'error');
+          return;
+        }
+
+        // Prepare options for WebAuthn
+        const publicKeyOptions = optionsData.options;
+        console.log('Authentication options from server:', JSON.stringify(publicKeyOptions));
+
+        // Convert challenge and allowCredentials.id from base64url to ArrayBuffer
+        publicKeyOptions.challenge = base64urlToArrayBuffer(publicKeyOptions.challenge);
+        console.log('Challenge converted to ArrayBuffer');
+
+        if (publicKeyOptions.allowCredentials && publicKeyOptions.allowCredentials.length > 0) {
+          console.log('Converting allowCredentials IDs to ArrayBuffer');
+          publicKeyOptions.allowCredentials = publicKeyOptions.allowCredentials.map(cred => {
+            return {
+              ...cred,
+              id: base64urlToArrayBuffer(cred.id)
+            };
+          });
+        } else {
+          console.log('No allowCredentials in options');
+        }
+
+        // Request authentication with passkey
+        console.log('Requesting credential with options:', JSON.stringify(publicKeyOptions));
+        const credential = await navigator.credentials.get({
+          publicKey: publicKeyOptions
+        });
+        console.log('Credential received:', credential.id);
+
+        // Prepare credential for server verification
+        const authData = {
+          id: credential.id,
+          rawId: arrayBufferToBase64url(credential.rawId),
+          type: credential.type,
+          response: {
+            authenticatorData: arrayBufferToBase64url(credential.response.authenticatorData),
+            clientDataJSON: arrayBufferToBase64url(credential.response.clientDataJSON),
+            signature: arrayBufferToBase64url(credential.response.signature),
+            userHandle: credential.response.userHandle ? arrayBufferToBase64url(credential.response.userHandle) : null
+          }
+        };
+
+        // Verify authentication with server
+        const verifyResponse = await fetch('/api/passkeys/authenticate/verify', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ credential: JSON.stringify(authData) })
+        });
+
+        const verifyData = await verifyResponse.json();
+
+        if (verifyData.success) {
+          // Redirect to home page on success
+          window.location.href = '/';
+        } else {
+          showToast(verifyData.message || 'Authentication failed', 'error');
+        }
+      } catch (error) {
+        console.error('Passkey authentication error:', error);
+        showToast('Passkey authentication failed', 'error');
+      }
+    };
+
+    // Handle passwordless login (no username required)
+    const handlePasswordlessLogin = async () => {
+      if (!isWebAuthnSupported()) {
+        showToast('Your browser does not support passkeys', 'error');
+        return;
+      }
+
+      try {
+        // Get authentication options from server
+        const optionsResponse = await fetch('/api/passkeys/authenticate/passwordless/options');
+        const optionsData = await optionsResponse.json();
+
+        if (!optionsData.success) {
+          showToast(optionsData.message || 'Failed to get authentication options', 'error');
+          return;
+        }
+
+        // Prepare options for WebAuthn
+        const publicKeyOptions = optionsData.options;
+        console.log('Passwordless authentication options from server:', JSON.stringify(publicKeyOptions));
+
+        // Convert challenge and allowCredentials.id from base64url to ArrayBuffer
+        publicKeyOptions.challenge = base64urlToArrayBuffer(publicKeyOptions.challenge);
+        console.log('Challenge converted to ArrayBuffer');
+
+        if (publicKeyOptions.allowCredentials && publicKeyOptions.allowCredentials.length > 0) {
+          console.log('Converting allowCredentials IDs to ArrayBuffer');
+          publicKeyOptions.allowCredentials = publicKeyOptions.allowCredentials.map(cred => {
+            return {
+              ...cred,
+              id: base64urlToArrayBuffer(cred.id)
+            };
+          });
+        } else {
+          console.log('No allowCredentials in options');
+        }
+
+        // Request authentication with passkey
+        console.log('Requesting credential with options:', JSON.stringify(publicKeyOptions));
+        const credential = await navigator.credentials.get({
+          publicKey: publicKeyOptions
+        });
+        console.log('Credential received:', credential.id);
+
+        // Prepare credential for server verification
+        const authData = {
+          id: credential.id,
+          rawId: arrayBufferToBase64url(credential.rawId),
+          type: credential.type,
+          response: {
+            authenticatorData: arrayBufferToBase64url(credential.response.authenticatorData),
+            clientDataJSON: arrayBufferToBase64url(credential.response.clientDataJSON),
+            signature: arrayBufferToBase64url(credential.response.signature),
+            userHandle: credential.response.userHandle ? arrayBufferToBase64url(credential.response.userHandle) : null
+          }
+        };
+
+        // Verify authentication with server
+        const verifyResponse = await fetch('/api/passkeys/authenticate/verify', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ credential: JSON.stringify(authData) })
+        });
+
+        const verifyData = await verifyResponse.json();
+
+        if (verifyData.success) {
+          // Redirect to home page on success
+          window.location.href = '/';
+        } else {
+          showToast(verifyData.message || 'Authentication failed', 'error');
+        }
+      } catch (error) {
+        console.error('Passwordless authentication error:', error);
+        showToast('Passwordless authentication failed', 'error');
+      }
+    };
+
+    // Smart passkey login - checks if username is present and chooses appropriate flow
+    const handleSmartPasskeyLogin = async () => {
+      if (!isWebAuthnSupported()) {
+        showToast('Your browser does not support passkeys', 'error');
+        return;
+      }
+
+      // Check if username is provided
+      const username = document.getElementById('username').value.trim();
+
+      if (username) {
+        // If username is provided, use the username+passkey flow
+        console.log('Username provided, using username+passkey flow');
+        await handlePasskeyLogin();
+      } else {
+        // If no username is provided, use the passwordless flow
+        console.log('No username provided, using passwordless flow');
+        await handlePasswordlessLogin();
+      }
+    };
+
+    // Function to check if auto-prompt is enabled
+    const isAutoPromptEnabled = async () => {
+      try {
+        // Try to fetch the setting from the server
+        const response = await fetch('/api/settings/public');
+        const data = await response.json();
+
+        if (data.success && data.settings && data.settings['auto-prompt-passkeys'] !== undefined) {
+          return data.settings['auto-prompt-passkeys'];
+        }
+
+        // Default to true if setting is not found
+        return true;
+      } catch (error) {
+        console.error('Error checking auto-prompt setting:', error);
+        // Default to true if there's an error
+        return true;
+      }
+    };
+
+    // Auto-prompt for passkeys
+    const autoPromptForPasskeys = async () => {
+      // Only auto-prompt if the feature is enabled and WebAuthn is supported
+      if (!isWebAuthnSupported()) {
+        return;
+      }
+
+      const autoPromptEnabled = await isAutoPromptEnabled();
+      if (!autoPromptEnabled) {
+        console.log('Auto-prompt for passkeys is disabled');
+        return;
+      }
+
+      console.log('Auto-prompting for passkeys...');
+      try {
+        // Use the passwordless flow for auto-prompting
+        await handlePasswordlessLogin();
+      } catch (error) {
+        console.error('Auto-prompt for passkeys failed:', error);
+        // Silently fail - don't show an error message to avoid confusion
+        // The user can still use the manual login methods
+      }
+    };
+
+    // Add event listeners to login buttons
+    document.addEventListener('DOMContentLoaded', () => {
+      const smartPasskeyLoginBtn = document.getElementById('smart-passkey-login-btn');
+
+      if (smartPasskeyLoginBtn) {
+        smartPasskeyLoginBtn.addEventListener('click', handleSmartPasskeyLogin);
+      }
+
+      // Disable passkey button if WebAuthn is not supported
+      if (!isWebAuthnSupported()) {
+        if (smartPasskeyLoginBtn) {
+          smartPasskeyLoginBtn.disabled = true;
+          smartPasskeyLoginBtn.title = 'Your browser does not support passkeys';
+          smartPasskeyLoginBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+      } else {
+        // Auto-prompt for passkeys if WebAuthn is supported
+        // Use a small delay to ensure the page is fully loaded
+        setTimeout(() => {
+          autoPromptForPasskeys();
+        }, 500);
+      }
+    });
+  </script>
+</body>
+</html>

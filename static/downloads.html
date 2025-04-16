@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PrettyDownloader - Downloads</title>
+
+  <!-- Favicon -->
+  <link rel="icon" href="/static/img/favicon.png" type="image/png">
+
+  <!-- Tailwind CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Custom CSS -->
+  <link href="/static/css/style.css" rel="stylesheet">
+
+  <!-- Alpine.js -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.10.3/dist/cdn.min.js" defer></script>
+</head>
+<body class="flex flex-col min-h-screen">
+  <!-- The sidebar will be dynamically inserted by sidebar.js -->
+
+  <!-- Main content -->
+  <div class="flex-1 ml-0 md:ml-64 transition-all duration-300">
+    <!-- The topbar will be dynamically inserted by topbar.js -->
+
+    <!-- Page content -->
+    <main class="p-4 md:p-6">
+      <!-- Downloads header -->
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-semibold">Active Downloads</h2>
+        <button id="refresh-downloads" class="btn btn-primary">
+          <i class="fas fa-sync-alt mr-2"></i> Refresh
+        </button>
+      </div>
+
+      <!-- Downloads list -->
+      <div class="card p-4">
+        <div id="downloads-list" class="mt-2">
+          <div class="flex justify-center p-8">
+            <div class="loader"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Download stats -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+        <div class="card p-4">
+          <div class="flex items-center">
+            <div class="rounded-full bg-blue-500 bg-opacity-20 p-3 mr-4">
+              <i class="fas fa-arrow-down text-blue-500"></i>
+            </div>
+            <div>
+              <h3 class="text-sm text-gray-400">Download Speed</h3>
+              <p class="text-xl font-semibold" id="total-download-speed">0 KB/s</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card p-4">
+          <div class="flex items-center">
+            <div class="rounded-full bg-green-500 bg-opacity-20 p-3 mr-4">
+              <i class="fas fa-check text-green-500"></i>
+            </div>
+            <div>
+              <h3 class="text-sm text-gray-400">Completed</h3>
+              <p class="text-xl font-semibold" id="completed-count">0</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card p-4">
+          <div class="flex items-center">
+            <div class="rounded-full bg-yellow-500 bg-opacity-20 p-3 mr-4">
+              <i class="fas fa-spinner text-yellow-500"></i>
+            </div>
+            <div>
+              <h3 class="text-sm text-gray-400">In Progress</h3>
+              <p class="text-xl font-semibold" id="in-progress-count">0</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 p-4 text-center text-gray-400 text-sm">
+      <p></p>
+    </footer>
+  </div>
+
+  <!-- Custom JavaScript -->
+  <script src="/static/js/sidebar.js"></script>
+  <script src="/static/js/topbar.js"></script>
+  <script src="/static/js/app.js"></script>
+
+  <!-- Page-specific JavaScript -->
+  <script>
+    // Update download stats
+    function updateDownloadStats(downloads) {
+      if (!downloads || downloads.length === 0) {
+        document.getElementById('total-download-speed').textContent = '0 KB/s';
+        document.getElementById('completed-count').textContent = '0';
+        document.getElementById('in-progress-count').textContent = '0';
+        return;
+      }
+
+      let totalDownloadSpeed = 0;
+      let completedCount = 0;
+      let inProgressCount = 0;
+
+      downloads.forEach(download => {
+        totalDownloadSpeed += download.dlspeed;
+
+        if (download.progress === 1) {
+          completedCount++;
+        } else {
+          inProgressCount++;
+        }
+      });
+
+      document.getElementById('total-download-speed').textContent = formatFileSize(totalDownloadSpeed) + '/s';
+      document.getElementById('completed-count').textContent = completedCount;
+      document.getElementById('in-progress-count').textContent = inProgressCount;
+    }
+
+    // Override display downloads function to update stats
+    const originalDisplayDownloads = displayDownloads;
+    displayDownloads = function(downloads) {
+      originalDisplayDownloads(downloads);
+      updateDownloadStats(downloads);
+    };
+
+    // Auto-refresh downloads every 10 seconds
+    setInterval(fetchDownloads, 10000);
+  </script>
+</body>
+</html>

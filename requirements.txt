@@ -1,0 +1,10 @@
+flask
+python-qbittorrent
+python-dotenv
+flask-session
+bcrypt
+flask-bcrypt
+requests
+webauthn
+pydantic
+cryptography

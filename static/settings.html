@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PrettyDownloader - Settings</title>
+
+  <!-- Favicon -->
+  <link rel="icon" href="/static/img/favicon.png" type="image/png">
+
+  <!-- Tailwind CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Custom CSS -->
+  <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body class="flex flex-col min-h-screen">
+  <!-- The sidebar will be dynamically inserted by sidebar.js -->
+
+  <!-- Main content -->
+  <div class="flex-1 ml-0 md:ml-64 transition-all duration-300">
+    <!-- The topbar will be dynamically inserted by topbar.js -->
+
+    <!-- Page content -->
+    <main class="p-4 md:p-6">
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold">User Settings</h1>
+      </div>
+
+      <!-- Password Change Section -->
+      <div class="card p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">Change Password</h2>
+        <form id="change-password-form">
+          <div class="mb-4">
+            <label for="current-password" class="block text-sm font-medium mb-2">Current Password</label>
+            <input type="password" id="current-password" class="form-input w-full" required>
+          </div>
+          <div class="mb-4">
+            <label for="new-password" class="block text-sm font-medium mb-2">New Password</label>
+            <input type="password" id="new-password" class="form-input w-full" required>
+          </div>
+          <div class="mb-4">
+            <label for="confirm-password" class="block text-sm font-medium mb-2">Confirm New Password</label>
+            <input type="password" id="confirm-password" class="form-input w-full" required>
+          </div>
+          <div class="flex justify-end">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save mr-2"></i> Change Password
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Passkeys Section -->
+      <div class="card p-6 mb-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold">Manage Passkeys</h2>
+          <button id="add-passkey-btn" class="btn btn-primary">
+            <i class="fas fa-plus mr-2"></i> Add Passkey
+          </button>
+        </div>
+        
+        <p class="mb-4">
+          <i class="fas fa-info-circle text-blue-400 mr-2"></i>
+          Passkeys provide a more secure way to sign in without having to remember passwords. They use biometric authentication (like fingerprint or face recognition) or a device PIN.
+        </p>
+
+        <div id="passkeys-list" class="overflow-x-auto">
+          <div class="text-center p-4">
+            <div class="loader mx-auto"></div>
+            <p class="mt-2 text-gray-400">Loading passkeys...</p>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 p-4 text-center text-gray-400 text-sm">
+      <p></p>
+    </footer>
+  </div>
+
+  <!-- Add Passkey Modal -->
+  <div id="add-passkey-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
+    <div class="absolute inset-0 bg-black bg-opacity-75"></div>
+    <div class="card p-4 w-full max-w-md z-10">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold">Add New Passkey</h3>
+        <button id="close-passkey-modal" class="text-gray-400 hover:text-white">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <form id="add-passkey-form">
+        <div class="mb-4">
+          <label for="passkey-name" class="block text-sm font-medium mb-2">Passkey Name</label>
+          <input type="text" id="passkey-name" class="w-full py-2 px-3 rounded-md bg-gray-700 border border-gray-600 focus:outline-none focus:border-red-500" placeholder="e.g. My Phone" required>
+        </div>
+        <div class="flex justify-end">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-fingerprint mr-2"></i> Register Passkey
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Custom JavaScript -->
+  <script src="/static/js/sidebar.js"></script>
+  <script src="/static/js/topbar.js"></script>
+  <script src="/static/js/app.js"></script>
+
+  <!-- Settings Page JavaScript -->
+  <script>
+    // Check if WebAuthn is supported
+    const isWebAuthnSupported = () => {
+      return window.PublicKeyCredential !== undefined;
+    };
+
+    // Convert base64url to ArrayBuffer
+    const base64urlToArrayBuffer = (base64url) => {
+      const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+      const padLen = (4 - (base64.length % 4)) % 4;
+      const padded = base64.padEnd(base64.length + padLen, '=');
+      const binary = atob(padded);
+      const buffer = new ArrayBuffer(binary.length);
+      const bytes = new Uint8Array(buffer);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return buffer;
+    };
+
+    // Convert ArrayBuffer to base64url
+    const arrayBufferToBase64url = (buffer) => {
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = btoa(binary);
+      return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    };
+
+    // Format date
+    function formatDate(timestamp) {
+      const date = new Date(timestamp * 1000);
+      return date.toLocaleString();
+    }
+
+    // Fetch passkeys
+    async function fetchPasskeys() {
+      try {
+        const response = await fetch('/api/passkeys');
+        const data = await response.json();
+
+        if (data.success) {
+          displayPasskeys(data.passkeys);
+        } else {
+          showToast(data.message || 'Failed to fetch passkeys', 'error');
+          document.getElementById('passkeys-list').innerHTML = '<div class="text-center p-4 text-red-500">Failed to load passkeys</div>';
+        }
+      } catch (error) {
+        console.error('Error fetching passkeys:', error);
+        document.getElementById('passkeys-list').innerHTML = '<div class="text-center p-4 text-red-500">Error loading passkeys</div>';
+      }
+    }
+
+    // Display passkeys
+    function displayPasskeys(passkeys) {
+      const passkeysListEl = document.getElementById('passkeys-list');
+
+      if (!passkeys || passkeys.length === 0) {
+        passkeysListEl.innerHTML = '<div class="text-center p-4 text-gray-400">No passkeys registered</div>';
+        return;
+      }
+
+      let html = `
+        <table class="table w-full">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Created</th>
+              <th>Last Used</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      passkeys.forEach(passkey => {
+        html += `
+          <tr>
+            <td>${passkey.name}</td>
+            <td>${formatDate(passkey.created_at)}</td>
+            <td>${formatDate(passkey.last_used)}</td>
+            <td>
+              <button
+                class="text-red-500 hover:text-red-700"
+                onclick="deletePasskey('${passkey.credential_id}')"
+                title="Delete passkey"
+              >
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+
+      html += `
+          </tbody>
+        </table>
+      `;
+
+      passkeysListEl.innerHTML = html;
+    }
+
+    // Delete passkey
+    async function deletePasskey(credentialId) {
+      if (!confirm('Are you sure you want to delete this passkey?')) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/passkeys/${credentialId}`, {
+          method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showToast('Passkey deleted successfully', 'success');
+          fetchPasskeys();
+        } else {
+          showToast(data.message || 'Failed to delete passkey', 'error');
+        }
+      } catch (error) {
+        console.error('Error deleting passkey:', error);
+        showToast('Error deleting passkey', 'error');
+      }
+    }
+
+    // Register new passkey
+    async function registerPasskey(name) {
+      if (!isWebAuthnSupported()) {
+        showToast('Your browser does not support passkeys', 'error');
+        return;
+      }
+
+      try {
+        // Get registration options from server
+        const optionsResponse = await fetch('/api/passkeys/register/options', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const optionsData = await optionsResponse.json();
+
+        if (!optionsData.success) {
+          showToast(optionsData.message || 'Failed to get registration options', 'error');
+          return;
+        }
+
+        // Prepare options for WebAuthn
+        const publicKeyOptions = optionsData.options;
+
+        // Convert challenge and user.id from base64url to ArrayBuffer
+        publicKeyOptions.challenge = base64urlToArrayBuffer(publicKeyOptions.challenge);
+        publicKeyOptions.user.id = base64urlToArrayBuffer(publicKeyOptions.user.id);
+
+        // Convert excludeCredentials.id from base64url to ArrayBuffer if present
+        if (publicKeyOptions.excludeCredentials && publicKeyOptions.excludeCredentials.length > 0) {
+          publicKeyOptions.excludeCredentials = publicKeyOptions.excludeCredentials.map(cred => {
+            return {
+              ...cred,
+              id: base64urlToArrayBuffer(cred.id)
+            };
+          });
+        }
+
+        // Create new credential
+        console.log('Creating credential with options:', JSON.stringify(publicKeyOptions));
+        const credential = await navigator.credentials.create({
+          publicKey: publicKeyOptions
+        });
+
+        // Prepare credential for server verification
+        console.log('Preparing credential for server verification');
+        const registrationData = {
+          id: credential.id,
+          rawId: arrayBufferToBase64url(credential.rawId),
+          type: credential.type,
+          response: {
+            clientDataJSON: arrayBufferToBase64url(credential.response.clientDataJSON),
+            attestationObject: arrayBufferToBase64url(credential.response.attestationObject)
+          }
+        };
+        console.log('Registration data prepared:', JSON.stringify(registrationData));
+
+        // Verify registration with server
+        const verifyResponse = await fetch('/api/passkeys/register/verify', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            credential: JSON.stringify(registrationData),
+            name: name
+          })
+        });
+
+        const verifyData = await verifyResponse.json();
+
+        if (verifyData.success) {
+          showToast('Passkey registered successfully', 'success');
+          closeAddPasskeyModal();
+          fetchPasskeys();
+        } else {
+          showToast(verifyData.message || 'Registration failed', 'error');
+        }
+      } catch (error) {
+        console.error('Passkey registration error:', error);
+        showToast('Passkey registration failed', 'error');
+      }
+    }
+
+    // Show add passkey modal
+    function showAddPasskeyModal() {
+      document.getElementById('add-passkey-modal').classList.remove('hidden');
+    }
+
+    // Close add passkey modal
+    function closeAddPasskeyModal() {
+      document.getElementById('add-passkey-modal').classList.add('hidden');
+      document.getElementById('add-passkey-form').reset();
+    }
+
+    // Change password
+    async function changePassword(currentPassword, newPassword) {
+      try {
+        // First verify current password
+        const verifyResponse = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            username: await getCurrentUsername(),
+            password: currentPassword
+          })
+        });
+
+        const verifyData = await verifyResponse.json();
+
+        if (!verifyData.success) {
+          showToast('Current password is incorrect', 'error');
+          return false;
+        }
+
+        // Now change the password
+        const response = await fetch(`/api/users/self/change-password`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            new_password: newPassword
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showToast('Password changed successfully', 'success');
+          document.getElementById('change-password-form').reset();
+          return true;
+        } else {
+          showToast(data.message || 'Failed to change password', 'error');
+          return false;
+        }
+      } catch (error) {
+        console.error('Error changing password:', error);
+        showToast('Error changing password', 'error');
+        return false;
+      }
+    }
+
+    // Get current username
+    async function getCurrentUsername() {
+      try {
+        const response = await fetch('/api/auth/status');
+        const data = await response.json();
+        return data.username;
+      } catch (error) {
+        console.error('Error getting current username:', error);
+        return null;
+      }
+    }
+
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', () => {
+      // Fetch passkeys
+      fetchPasskeys();
+
+      // Add passkey button
+      const addPasskeyBtn = document.getElementById('add-passkey-btn');
+      if (addPasskeyBtn) {
+        addPasskeyBtn.addEventListener('click', showAddPasskeyModal);
+      }
+
+      // Close modal button
+      const closeModalBtn = document.getElementById('close-passkey-modal');
+      if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', closeAddPasskeyModal);
+      }
+
+      // Add passkey form
+      const addPasskeyForm = document.getElementById('add-passkey-form');
+      if (addPasskeyForm) {
+        addPasskeyForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const name = document.getElementById('passkey-name').value.trim();
+          if (name) {
+            registerPasskey(name);
+          } else {
+            showToast('Please enter a name for your passkey', 'warning');
+          }
+        });
+      }
+
+      // Change password form
+      const changePasswordForm = document.getElementById('change-password-form');
+      if (changePasswordForm) {
+        changePasswordForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          
+          const currentPassword = document.getElementById('current-password').value;
+          const newPassword = document.getElementById('new-password').value;
+          const confirmPassword = document.getElementById('confirm-password').value;
+          
+          if (newPassword !== confirmPassword) {
+            showToast('New passwords do not match', 'error');
+            return;
+          }
+          
+          await changePassword(currentPassword, newPassword);
+        });
+      }
+
+      // Disable passkey features if WebAuthn is not supported
+      if (!isWebAuthnSupported()) {
+        if (addPasskeyBtn) {
+          addPasskeyBtn.disabled = true;
+          addPasskeyBtn.title = 'Your browser does not support passkeys';
+          addPasskeyBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        document.getElementById('passkeys-list').innerHTML =
+          '<div class="text-center p-4 text-yellow-500">' +
+          '<i class="fas fa-exclamation-triangle mr-2"></i>' +
+          'Your browser does not support passkeys. Please use a modern browser like Chrome, Edge, or Safari.' +
+          '</div>';
+      }
+    });
+  </script>
+</body>
+</html>

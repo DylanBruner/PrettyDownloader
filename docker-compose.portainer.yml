@@ -1,0 +1,30 @@
+version: '3'
+
+services:
+  prettydownloader:
+    image: prettydownloader:latest
+    container_name: prettydownloader
+    ports:
+      - "8080:80"
+    environment:
+      - qb-url=http://127.0.0.1:30024
+      - qb-user=admin
+      - qb-password=password
+      - USERS_DB_PATH=/data/users.json
+      - LOGS_DB_PATH=/data/logs.json
+      - SETTINGS_DB_PATH=/data/settings.json
+    volumes:
+      # Use a bind mount for the users.json file
+      - prettydownloader_data:/data
+      - prettydownloader_sessions:/app/flask_session
+    restart: unless-stopped
+    networks:
+      - media_network
+
+networks:
+  media_network:
+    external: false  # Use an existing network, or set to false to create a new one
+
+volumes:
+  prettydownloader_data:
+  prettydownloader_sessions:

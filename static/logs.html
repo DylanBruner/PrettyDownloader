@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PrettyDownloader - System Logs</title>
+
+  <!-- Favicon -->
+  <link rel="icon" href="/static/img/favicon.png" type="image/png">
+
+  <!-- Tailwind CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Custom CSS -->
+  <link href="/static/css/style.css" rel="stylesheet">
+
+  <!-- Alpine.js -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.10.3/dist/cdn.min.js" defer></script>
+</head>
+<body class="flex flex-col min-h-screen">
+  <!-- The sidebar will be dynamically inserted by sidebar.js -->
+
+  <!-- Main content -->
+  <div class="flex-1 ml-0 md:ml-64 transition-all duration-300">
+    <!-- The topbar will be dynamically inserted by topbar.js -->
+
+    <!-- Page content -->
+    <main class="p-4 md:p-6">
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <!-- Filters -->
+        <div class="lg:col-span-1">
+          <div class="card p-4">
+            <h2 class="text-xl font-semibold mb-4">Filters</h2>
+            <form id="logs-filter-form">
+              <div class="mb-4">
+                <label for="log-type" class="block text-sm font-medium mb-2">Log Type</label>
+                <select id="log-type" class="form-input w-full">
+                  <option value="">All Types</option>
+                  <option value="login">Successful Logins</option>
+                  <option value="login_failed">Failed Logins</option>
+                  <option value="download">Downloads</option>
+                  <option value="download_failed">Failed Downloads</option>
+                  <option value="user_created">User Created</option>
+                  <option value="user_deleted">User Deleted</option>
+                </select>
+              </div>
+
+              <div class="mb-4">
+                <label for="username-filter" class="block text-sm font-medium mb-2">Username</label>
+                <input type="text" id="username-filter" class="form-input w-full" placeholder="Filter by username">
+              </div>
+
+              <div class="mb-4">
+                <label for="limit" class="block text-sm font-medium mb-2">Limit</label>
+                <select id="limit" class="form-input w-full">
+                  <option value="50">50 entries</option>
+                  <option value="100" selected>100 entries</option>
+                  <option value="200">200 entries</option>
+                  <option value="500">500 entries</option>
+                  <option value="1000">1000 entries</option>
+                </select>
+              </div>
+
+              <button type="submit" class="btn btn-primary w-full">
+                <i class="fas fa-filter mr-2"></i> Apply Filters
+              </button>
+            </form>
+          </div>
+
+          <!-- Log Statistics -->
+          <div class="card p-4 mt-6">
+            <h2 class="text-xl font-semibold mb-4">Log Statistics</h2>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="bg-gray-700 rounded-lg p-4 text-center">
+                <div class="text-3xl font-bold mb-2" id="total-logs-count">0</div>
+                <div class="text-sm text-gray-400">Total Logs</div>
+              </div>
+              <div class="bg-gray-700 rounded-lg p-4 text-center">
+                <div class="text-3xl font-bold mb-2" id="download-logs-count">0</div>
+                <div class="text-sm text-gray-400">Downloads</div>
+              </div>
+              <div class="bg-gray-700 rounded-lg p-4 text-center">
+                <div class="text-3xl font-bold mb-2" id="failed-download-logs-count">0</div>
+                <div class="text-sm text-gray-400">Failed Downloads</div>
+              </div>
+              <div class="bg-gray-700 rounded-lg p-4 text-center">
+                <div class="text-3xl font-bold mb-2" id="login-logs-count">0</div>
+                <div class="text-sm text-gray-400">Logins</div>
+              </div>
+              <div class="bg-gray-700 rounded-lg p-4 text-center">
+                <div class="text-3xl font-bold mb-2" id="failed-login-logs-count">0</div>
+                <div class="text-sm text-gray-400">Failed Logins</div>
+              </div>
+              <div class="bg-gray-700 rounded-lg p-4 text-center">
+                <div class="text-3xl font-bold mb-2" id="user-created-logs-count">0</div>
+                <div class="text-sm text-gray-400">Users Created</div>
+              </div>
+              <div class="bg-gray-700 rounded-lg p-4 text-center">
+                <div class="text-3xl font-bold mb-2" id="user-deleted-logs-count">0</div>
+                <div class="text-sm text-gray-400">Users Deleted</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Logs list -->
+        <div class="lg:col-span-3">
+          <div class="card p-4">
+            <h2 class="text-xl font-semibold mb-4">System Logs</h2>
+            <p class="text-sm text-gray-400 mb-4">Note: Logs are automatically purged after 7 days.</p>
+            <div id="logs-list" class="mt-4">
+              <div class="flex justify-center p-8">
+                <div class="loader"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 p-4 text-center text-gray-400 text-sm">
+      <p></p>
+    </footer>
+  </div>
+
+  <!-- Custom JavaScript -->
+  <script src="/static/js/sidebar.js"></script>
+  <script src="/static/js/topbar.js"></script>
+  <script src="/static/js/app.js"></script>
+
+  <!-- Page-specific JavaScript -->
+  <script>
+    // Direct API call to fetch logs
+    document.addEventListener('DOMContentLoaded', async function() {
+      console.log('Logs page loaded');
+
+      // Check if user is admin
+      const authResponse = await fetch('/api/auth/status');
+      const authData = await authResponse.json();
+
+      if (authData.authenticated && authData.is_admin) {
+        console.log('User is authenticated and admin, fetching logs');
+
+        // Fetch logs
+        fetchLogs();
+
+        // Set up filter form
+        const filterForm = document.getElementById('logs-filter-form');
+        if (filterForm) {
+          filterForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            fetchLogs();
+          });
+        }
+      }
+    });
+
+    // Fetch logs with filters
+    async function fetchLogs() {
+      const logType = document.getElementById('log-type').value;
+      const username = document.getElementById('username-filter').value.trim();
+      const limit = document.getElementById('limit').value;
+
+      // Build query string
+      let queryParams = new URLSearchParams();
+      if (logType) queryParams.append('type', logType);
+      if (username) queryParams.append('username', username);
+      if (limit) queryParams.append('limit', limit);
+
+      try {
+        const response = await fetch(`/api/logs?${queryParams.toString()}`);
+        const data = await response.json();
+
+        console.log('Logs API response:', data);
+
+        if (data.success) {
+          displayLogsList(data.logs);
+          updateLogStats(data.stats);
+        } else {
+          document.getElementById('logs-list').innerHTML =
+            '<div class="text-center p-8 text-red-500">Error fetching logs</div>';
+        }
+      } catch (error) {
+        console.error('Error fetching logs:', error);
+        document.getElementById('logs-list').innerHTML =
+          '<div class="text-center p-8 text-red-500">Error fetching logs. Please try again.</div>';
+      }
+    }
+
+    // Display logs list
+    function displayLogsList(logs) {
+      const logsList = document.getElementById('logs-list');
+
+      if (!logs || logs.length === 0) {
+        logsList.innerHTML = '<div class="text-center p-8">No logs found</div>';
+        return;
+      }
+
+      let html = `
+        <div class="overflow-x-auto">
+          <table class="table w-full">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Type</th>
+                <th>User</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      logs.forEach(log => {
+        // Format timestamp
+        const date = new Date(log.timestamp);
+        const formattedDate = date.toLocaleString();
+
+        // Format log type
+        let logTypeDisplay = '';
+        let logTypeClass = '';
+
+        switch(log.type) {
+          case 'login':
+            logTypeDisplay = '<i class="fas fa-sign-in-alt mr-1"></i> Login';
+            logTypeClass = 'text-green-500';
+            break;
+          case 'login_failed':
+            logTypeDisplay = '<i class="fas fa-times-circle mr-1"></i> Failed Login';
+            logTypeClass = 'text-red-500';
+            break;
+          case 'download':
+            logTypeDisplay = '<i class="fas fa-download mr-1"></i> Download';
+            logTypeClass = 'text-blue-500';
+            break;
+          case 'download_failed':
+            logTypeDisplay = '<i class="fas fa-exclamation-triangle mr-1"></i> Failed Download';
+            logTypeClass = 'text-red-500';
+            break;
+          case 'user_created':
+            logTypeDisplay = '<i class="fas fa-user-plus mr-1"></i> User Created';
+            logTypeClass = 'text-green-500';
+            break;
+          case 'user_deleted':
+            logTypeDisplay = '<i class="fas fa-user-minus mr-1"></i> User Deleted';
+            logTypeClass = 'text-yellow-500';
+            break;
+          default:
+            logTypeDisplay = log.type;
+        }
+
+        // Format details
+        let detailsHtml = '';
+        if (log.type === 'download' && log.details) {
+          detailsHtml = `
+            <div><strong>Torrent:</strong> ${log.details.torrent_name || 'N/A'}</div>
+            <div><strong>Path:</strong> ${log.details.download_path || 'N/A'}</div>
+          `;
+        } else if (log.type === 'download_failed' && log.details) {
+          detailsHtml = `
+            <div><strong>Torrent:</strong> ${log.details.torrent_name || 'N/A'}</div>
+            <div><strong>Reason:</strong> ${log.details.reason || 'Unknown error'}</div>
+          `;
+        } else if (log.type === 'login' || log.type === 'login_failed') {
+          detailsHtml = `<div><strong>Success:</strong> ${log.details.success ? 'Yes' : 'No'}</div>`;
+        } else if (log.type === 'user_created' && log.details) {
+          detailsHtml = `
+            <div><strong>Created User:</strong> ${log.details.created_username || 'N/A'}</div>
+            <div><strong>Admin:</strong> ${log.details.is_admin ? 'Yes' : 'No'}</div>
+          `;
+        } else if (log.type === 'user_deleted' && log.details) {
+          detailsHtml = `<div><strong>Deleted User:</strong> ${log.details.deleted_username || 'N/A'}</div>`;
+        }
+
+        html += `
+          <tr>
+            <td>${formattedDate}</td>
+            <td class="${logTypeClass}">${logTypeDisplay}</td>
+            <td>${log.username}</td>
+            <td>${detailsHtml}</td>
+          </tr>
+        `;
+      });
+
+      html += `
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      logsList.innerHTML = html;
+    }
+
+    // Update log statistics
+    function updateLogStats(stats) {
+      if (!stats) {
+        document.getElementById('total-logs-count').textContent = '0';
+        document.getElementById('download-logs-count').textContent = '0';
+        document.getElementById('failed-download-logs-count').textContent = '0';
+        document.getElementById('login-logs-count').textContent = '0';
+        document.getElementById('failed-login-logs-count').textContent = '0';
+        document.getElementById('user-created-logs-count').textContent = '0';
+        document.getElementById('user-deleted-logs-count').textContent = '0';
+        return;
+      }
+
+      document.getElementById('total-logs-count').textContent = stats.total || '0';
+      document.getElementById('download-logs-count').textContent = stats.downloads || '0';
+      document.getElementById('failed-download-logs-count').textContent = stats.failed_downloads || '0';
+      document.getElementById('login-logs-count').textContent = stats.logins || '0';
+      document.getElementById('failed-login-logs-count').textContent = stats.failed_logins || '0';
+      document.getElementById('user-created-logs-count').textContent = stats.user_created || '0';
+      document.getElementById('user-deleted-logs-count').textContent = stats.user_deleted || '0';
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  prettydownloader:
+    build: .
+    ports:
+      - "8080:80"
+    env_file:
+      - .env
+    environment:
+      - USERS_DB_PATH=/app/users.json
+      - LOGS_DB_PATH=/app/logs.json
+    volumes:
+      - ./static:/app/static
+      - ./users.json:/app/users.json
+      - ./logs.json:/app/logs.json
+      - ./flask_session:/app/flask_session
+    restart: unless-stopped

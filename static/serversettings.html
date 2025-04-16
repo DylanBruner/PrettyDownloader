@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PrettyDownloader - Server Settings</title>
+
+  <!-- Favicon -->
+  <link rel="icon" href="/static/img/favicon.png" type="image/png">
+
+  <!-- Tailwind CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Custom CSS -->
+  <link href="/static/css/style.css" rel="stylesheet">
+
+  <!-- Alpine.js -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.10.3/dist/cdn.min.js" defer></script>
+</head>
+<body class="flex flex-col min-h-screen">
+  <!-- The sidebar will be dynamically inserted by sidebar.js -->
+
+  <!-- Main content -->
+  <div class="flex-1 ml-0 md:ml-64 transition-all duration-300">
+    <!-- The topbar will be dynamically inserted by topbar.js -->
+
+    <!-- Page content -->
+    <main class="p-4 md:p-6">
+      <!-- Settings header -->
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-semibold">Server Settings</h2>
+        <div>
+          <button id="reset-settings" class="btn bg-gray-600 hover:bg-gray-700 text-white mr-2">
+            <i class="fas fa-undo mr-2"></i> Reset to Defaults
+          </button>
+          <button id="save-settings" class="btn btn-primary">
+            <i class="fas fa-save mr-2"></i> Save Settings
+          </button>
+        </div>
+      </div>
+
+      <!-- Settings form -->
+      <div class="card p-6">
+        <form id="settings-form">
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">qBittorrent Configuration</h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label for="qb-url" class="block text-sm font-medium mb-2">qBittorrent URL</label>
+                <input type="text" id="qb-url" name="qb-url" class="form-input w-full" placeholder="http://localhost:8080/">
+                <p class="text-xs text-gray-400 mt-1">The URL to your qBittorrent Web UI</p>
+              </div>
+
+              <div>
+                <label for="qb-user" class="block text-sm font-medium mb-2">qBittorrent Username</label>
+                <input type="text" id="qb-user" name="qb-user" class="form-input w-full" placeholder="admin">
+                <p class="text-xs text-gray-400 mt-1">Username for qBittorrent authentication</p>
+              </div>
+
+              <div>
+                <label for="qb-password" class="block text-sm font-medium mb-2">qBittorrent Password</label>
+                <input type="password" id="qb-password" name="qb-password" class="form-input w-full" placeholder="••••••••">
+                <p class="text-xs text-gray-400 mt-1">Password for qBittorrent authentication</p>
+              </div>
+
+              <div class="flex items-center">
+                <label class="flex items-center cursor-pointer">
+                  <input type="checkbox" id="disable-qb" name="disable-qb" class="mr-2">
+                  <span>Disable qBittorrent Integration</span>
+                </label>
+                <p class="text-xs text-gray-400 mt-1">Check this if you don't want to use qBittorrent</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">TMDB Configuration</h3>
+
+            <div class="grid grid-cols-1 gap-6">
+              <div>
+                <label for="tmdb-api-key" class="block text-sm font-medium mb-2">TMDB API Key</label>
+                <input type="text" id="tmdb-api-key" name="tmdb-api-key" class="form-input w-full" placeholder="Your TMDB API key">
+                <p class="text-xs text-gray-400 mt-1">Get your API key from <a href="https://www.themoviedb.org/settings/api" target="_blank" class="text-red-400 hover:underline">themoviedb.org</a></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">WebAuthn/Passkey Configuration</h3>
+            <p class="text-sm text-gray-400 mb-4">
+              These settings are used for passkey authentication. If you're deploying to a public server,
+              you should set these to match your domain.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label for="RP_ID" class="block text-sm font-medium mb-2">Relying Party ID</label>
+                <input type="text" id="RP_ID" name="RP_ID" class="form-input w-full" placeholder="localhost">
+                <p class="text-xs text-gray-400 mt-1">The domain name for your application (e.g., 'example.com')</p>
+              </div>
+
+              <div>
+                <label for="RP_NAME" class="block text-sm font-medium mb-2">Relying Party Name</label>
+                <input type="text" id="RP_NAME" name="RP_NAME" class="form-input w-full" placeholder="PrettyDownloader">
+                <p class="text-xs text-gray-400 mt-1">The human-readable name of your application</p>
+              </div>
+
+              <div>
+                <label for="RP_ORIGIN" class="block text-sm font-medium mb-2">Relying Party Origin</label>
+                <input type="text" id="RP_ORIGIN" name="RP_ORIGIN" class="form-input w-full" placeholder="http://localhost">
+                <p class="text-xs text-gray-400 mt-1">The full origin URL of your application (e.g., 'https://example.com')</p>
+              </div>
+
+              <div class="flex items-center">
+                <label class="flex items-center cursor-pointer">
+                  <input type="checkbox" id="auto-prompt-passkeys" name="auto-prompt-passkeys" class="mr-2">
+                  <span>Auto-prompt for Passkeys</span>
+                </label>
+                <p class="text-xs text-gray-400 mt-1">Automatically prompt for passkeys when visiting the login page</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end">
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-save mr-2"></i> Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Settings info -->
+      <div class="card p-6 mt-6">
+        <h3 class="text-lg font-semibold mb-4">About Server Settings</h3>
+        <p class="mb-4">
+          These settings override the values in your <code>.env</code> file. If you don't override a setting, the value from the <code>.env</code> file will be used.
+        </p>
+        <p class="mb-4">
+          Changes to these settings will take effect immediately after saving, but some changes may require a restart of the application to fully take effect.
+        </p>
+        <div class="bg-gray-700 rounded-lg p-4">
+          <h4 class="font-semibold mb-2">Current Configuration</h4>
+          <div id="current-config" class="text-sm font-mono overflow-x-auto">
+            Loading...
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 p-4 text-center text-gray-400 text-sm">
+      <p></p>
+    </footer>
+  </div>
+
+  <!-- Custom JavaScript -->
+  <script src="/static/js/sidebar.js"></script>
+  <script src="/static/js/topbar.js"></script>
+  <script src="/static/js/app.js"></script>
+
+  <!-- Page-specific JavaScript -->
+  <script>
+    document.addEventListener('DOMContentLoaded', async function() {
+      console.log('Server Settings page loaded');
+
+      // Check if user is admin
+      const authResponse = await fetch('/api/auth/status');
+      const authData = await authResponse.json();
+
+      if (authData.authenticated && authData.is_admin) {
+        console.log('User is authenticated and admin, fetching settings');
+
+        // Fetch settings
+        fetchSettings();
+
+        // Set up form submission
+        const settingsForm = document.getElementById('settings-form');
+        if (settingsForm) {
+          settingsForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveSettings();
+          });
+        }
+
+        // Set up reset button
+        const resetButton = document.getElementById('reset-settings');
+        if (resetButton) {
+          resetButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            resetSettings();
+          });
+        }
+
+        // Set up sidebar logout button
+        const sidebarLogoutButton = document.getElementById('sidebar-logout-button');
+        if (sidebarLogoutButton) {
+          sidebarLogoutButton.addEventListener('click', handleLogout);
+        }
+      }
+    });
+
+    // Fetch settings
+    async function fetchSettings() {
+      try {
+        const response = await fetch('/api/settings');
+        const data = await response.json();
+
+        if (data.success) {
+          // Populate form with settings
+          document.getElementById('qb-url').value = data.settings['qb-url'] || '';
+          document.getElementById('qb-user').value = data.settings['qb-user'] || '';
+          document.getElementById('qb-password').value = data.settings['qb-password'] || '';
+          document.getElementById('disable-qb').checked = data.settings['disable-qb'] || false;
+          document.getElementById('tmdb-api-key').value = data.settings['tmdb-api-key'] || '';
+
+          // WebAuthn/Passkey settings
+          document.getElementById('RP_ID').value = data.settings['RP_ID'] || 'localhost';
+          document.getElementById('RP_NAME').value = data.settings['RP_NAME'] || 'PrettyDownloader';
+          document.getElementById('RP_ORIGIN').value = data.settings['RP_ORIGIN'] || 'http://localhost';
+          document.getElementById('auto-prompt-passkeys').checked = data.settings['auto-prompt-passkeys'] !== false; // Default to true
+
+          // Display current config
+          displayCurrentConfig(data.settings, data.overridden);
+        } else {
+          showToast(data.message || 'Failed to fetch settings', 'error');
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+        showToast('Error fetching settings', 'error');
+      }
+    }
+
+    // Save settings
+    async function saveSettings() {
+      const settings = {
+        // qBittorrent settings
+        'qb-url': document.getElementById('qb-url').value,
+        'qb-user': document.getElementById('qb-user').value,
+        'qb-password': document.getElementById('qb-password').value,
+        'disable-qb': document.getElementById('disable-qb').checked,
+
+        // TMDB settings
+        'tmdb-api-key': document.getElementById('tmdb-api-key').value,
+
+        // WebAuthn/Passkey settings
+        'RP_ID': document.getElementById('RP_ID').value,
+        'RP_NAME': document.getElementById('RP_NAME').value,
+        'RP_ORIGIN': document.getElementById('RP_ORIGIN').value,
+        'auto-prompt-passkeys': document.getElementById('auto-prompt-passkeys').checked
+      };
+
+      try {
+        const response = await fetch('/api/settings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ settings })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showToast('Settings saved successfully', 'success');
+          // Refresh settings
+          fetchSettings();
+        } else {
+          showToast(data.message || 'Failed to save settings', 'error');
+        }
+      } catch (error) {
+        console.error('Error saving settings:', error);
+        showToast('Error saving settings', 'error');
+      }
+    }
+
+    // Reset settings
+    async function resetSettings() {
+      if (!confirm('Are you sure you want to reset all settings to their default values?')) {
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/settings/reset', {
+          method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showToast('Settings reset successfully', 'success');
+          // Refresh settings
+          fetchSettings();
+        } else {
+          showToast(data.message || 'Failed to reset settings', 'error');
+        }
+      } catch (error) {
+        console.error('Error resetting settings:', error);
+        showToast('Error resetting settings', 'error');
+      }
+    }
+
+    // Display current configuration
+    function displayCurrentConfig(settings, overridden) {
+      const configElement = document.getElementById('current-config');
+
+      let html = '';
+
+      // Add each setting
+      for (const [key, value] of Object.entries(settings)) {
+        const isOverridden = overridden.includes(key);
+        const valueDisplay = key.includes('password') ? '••••••••' : value;
+
+        html += `<div class="mb-1">
+          <span class="text-gray-400">${key}:</span>
+          <span class="${isOverridden ? 'text-red-400' : 'text-green-400'}">${valueDisplay}</span>
+          ${isOverridden ? '<span class="text-xs text-red-400 ml-2">(Overridden)</span>' : '<span class="text-xs text-green-400 ml-2">(Default)</span>'}
+        </div>`;
+      }
+
+      configElement.innerHTML = html;
+    }
+
+    // Handle logout (in case it's not properly imported from app.js)
+    async function handleLogout() {
+      try {
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          // Redirect to login page
+          window.location.href = '/login';
+        } else {
+          showToast('Logout failed', 'error');
+        }
+      } catch (error) {
+        console.error('Error during logout:', error);
+        showToast('Error during logout', 'error');
+      }
+    }
+  </script>
+</body>
+</html>
