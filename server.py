@@ -6,7 +6,9 @@ import base64
 from flask import Flask, request, redirect, jsonify, session, Response
 from flask_session import Session
 from dotenv import load_dotenv
-from libs.tpbclient import PirateBaySearch
+from libs.providers.provider_manager import ProviderManager
+from libs.providers.piratebay_provider import PirateBayProvider
+from libs.providers.sample_provider import SampleProvider
 from libs.tmdbclient import TMDBClient
 from qbittorrent import Client
 import libs.users as users
@@ -56,7 +58,18 @@ else:
     print("[INFO] Disabling qbittorrent connection")
 print("Loading..?")
 
-tconn = PirateBaySearch()
+# Initialize provider manager
+provider_manager = ProviderManager()
+
+# Register providers
+piratebay_provider = PirateBayProvider()
+provider_manager.register_provider("piratebay", piratebay_provider)
+
+# Register sample provider (disabled by default)
+sample_provider = SampleProvider()
+provider_manager.register_provider("sample", sample_provider)
+
+# Initialize TMDB client
 tmdb = TMDBClient()
 
 app = Flask(__name__)
@@ -338,9 +351,13 @@ def route_api_download():
     name = request.json.get("name")
     infohash = request.json.get("hash")
     downloadpath = request.json.get("path")
+    provider_id = request.json.get("provider_id", "piratebay")  # Default to piratebay if not specified
 
-    magnet = tconn.create_magnet_link(infohash, name)
-    print(f"[INFO] Created magnet link: {magnet} for {name} ({infohash})")
+    magnet = provider_manager.create_magnet_link(infohash, name, provider_id)
+    if not magnet:
+        return jsonify({"success": False, "message": f"Provider {provider_id} not found or disabled"}), 400
+
+    print(f"[INFO] Created magnet link: {magnet} for {name} ({infohash}) using provider {provider_id}")
 
     # Ensure qBittorrent authentication is valid
     current_user = users.get_current_user()
@@ -378,31 +395,17 @@ def route_api_search():
     query = request.args.get("q")
     search_type = request.args.get("type", "tmdb")
     media_type = request.args.get("media_type", "all")
+    provider_id = request.args.get("provider_id", "piratebay")  # Default to piratebay if not specified
 
-    print(f"[INFO] Searching for {query} using {search_type}, media_type: {media_type}")
+    print(f"[INFO] Searching for {query} using {search_type}, media_type: {media_type}, provider: {provider_id}")
 
     if search_type == "tmdb":
         # Search TMDB first with media type filter
         search_results = tmdb.search(query, media_type=media_type)
         return jsonify(search_results)
     else:
-        # Direct TPB search (fallback)
-        search_results = tconn.search(query)
-
-        # Filter out adult content if the setting is enabled
-        hide_adult = os.environ.get('hide-adult-content', 'true').lower() == 'true'
-        if hide_adult:
-            # Filter out results with XXX in the name or in adult categories (500-599)
-            original_count = len(search_results)
-            search_results = [
-                result for result in search_results
-                if 'XXX' not in result['name'].upper() and
-                   not (result.get('category') and 500 <= int(result['category']) < 600)
-            ]
-            filtered_count = original_count - len(search_results)
-            if filtered_count > 0:
-                print(f"[INFO] Filtered out {filtered_count} adult content results")
-
+        # Direct torrent provider search (fallback)
+        search_results = provider_manager.search(query, provider_id=provider_id)
         return jsonify(search_results)
 
 @app.route('/api/tmdb/image/<path:image_path>')
@@ -452,27 +455,13 @@ def route_api_tmdb_details():
 def route_api_torrents():
     query = request.args.get("q")
     category = request.args.get("category", 0, type=int)
+    provider_id = request.args.get("provider_id", "piratebay")  # Default to piratebay if not specified
 
     if not query:
         return jsonify({"success": False, "message": "Query is required"}), 400
 
-    print(f"[INFO] Searching TPB for {query} with category {category}")
-    search_results = tconn.search(query, category)
-
-    # Filter out adult content if the setting is enabled
-    hide_adult = os.environ.get('hide-adult-content', 'true').lower() == 'true'
-    if hide_adult:
-        # Filter out results with XXX in the name or in adult categories (500-599)
-        original_count = len(search_results)
-        search_results = [
-            result for result in search_results
-            if 'XXX' not in result['name'].upper() and
-               not (result.get('category') and 500 <= int(result['category']) < 600)
-        ]
-        filtered_count = original_count - len(search_results)
-        if filtered_count > 0:
-            print(f"[INFO] Filtered out {filtered_count} adult content results")
-
+    print(f"[INFO] Searching for {query} with category {category} using provider {provider_id}")
+    search_results = provider_manager.search(query, category, provider_id=provider_id)
     return jsonify(search_results)
 
 @app.route('/api/fetch', methods=["GET"])
@@ -589,6 +578,55 @@ def route_api_settings_public_get():
         })
     except Exception as e:
         print(f"[ERROR] Failed to fetch public settings: {str(e)}")
+        return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
+
+@app.route('/api/providers', methods=["GET"])
+@auth_required
+def route_api_providers():
+    """Get all available providers"""
+    try:
+        providers_info = []
+
+        # Get all providers
+        for provider_id, provider in provider_manager.get_all_providers().items():
+            providers_info.append({
+                "id": provider_id,
+                "name": provider.name,
+                "enabled": provider.enabled
+            })
+
+        return jsonify({
+            "success": True,
+            "providers": providers_info
+        })
+    except Exception as e:
+        print(f"[ERROR] Failed to fetch providers: {str(e)}")
+        return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
+
+@app.route('/api/providers/<provider_id>/toggle', methods=["POST"])
+@auth_required
+@admin_required
+def route_api_providers_toggle(provider_id):
+    """Toggle a provider's enabled status"""
+    try:
+        provider = provider_manager.get_provider(provider_id)
+        if not provider:
+            return jsonify({"success": False, "message": f"Provider {provider_id} not found"}), 404
+
+        # Toggle enabled status
+        provider.enabled = not provider.enabled
+        print(f"[INFO] Provider {provider_id} ({provider.name}) is now {'enabled' if provider.enabled else 'disabled'}")
+
+        return jsonify({
+            "success": True,
+            "provider": {
+                "id": provider_id,
+                "name": provider.name,
+                "enabled": provider.enabled
+            }
+        })
+    except Exception as e:
+        print(f"[ERROR] Failed to toggle provider: {str(e)}")
         return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
 
 @app.route('/api/settings', methods=["POST"])
