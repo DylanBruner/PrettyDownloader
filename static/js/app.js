@@ -332,6 +332,7 @@ function debugImageLoad(img) {
 function ensureModalScrollable() {
   const modal = document.getElementById('media-details-modal');
   const modalCard = modal.querySelector('.card');
+  const modalContent = document.getElementById('media-details-content');
 
   if (modal && modalCard) {
     // Add touch event listeners to ensure scrolling works on mobile
@@ -339,13 +340,33 @@ function ensureModalScrollable() {
       e.stopPropagation();
     }, { passive: true });
 
+    if (modalContent) {
+      modalContent.addEventListener('touchmove', function(e) {
+        e.stopPropagation();
+      }, { passive: true });
+    }
+
     // For iOS Safari, we need to ensure the modal doesn't exceed viewport height
     const viewportHeight = window.innerHeight;
     const modalHeight = modalCard.offsetHeight;
+    const isMobile = window.innerWidth < 640;
 
-    if (modalHeight > viewportHeight * 0.9) {
+    if (isMobile) {
+      // On mobile, make the modal take up more of the screen
+      modalCard.style.maxHeight = (viewportHeight * 0.9) + 'px';
+      modalCard.style.height = (viewportHeight * 0.9) + 'px';
+
+      // Ensure the content area gets the remaining height after the header
+      const headerHeight = modalCard.querySelector('.sticky').offsetHeight;
+      if (modalContent && headerHeight) {
+        modalContent.style.maxHeight = `calc(${viewportHeight * 0.9}px - ${headerHeight}px - 2rem)`;
+        modalContent.style.overflowY = 'auto';
+      }
+
+      console.log('Adjusted modal for mobile:', modalCard.style.maxHeight);
+    } else if (modalHeight > viewportHeight * 0.9) {
+      // On desktop, just cap the height if needed
       modalCard.style.maxHeight = (viewportHeight * 0.85) + 'px';
-      console.log('Adjusted modal height for mobile:', modalCard.style.maxHeight);
     }
   }
 }
@@ -635,7 +656,7 @@ function displayMediaDetails(details) {
 
     // Build details HTML
     let html = `
-      <div class="flex flex-col sm:flex-row gap-3">
+      <div class="flex flex-col sm:flex-row gap-4">
         <div class="w-full sm:w-1/3 max-w-[180px] mx-auto sm:mx-0">
           <div class="w-full rounded-lg shadow-lg overflow-hidden" style="aspect-ratio: 2/3; background-color: var(--card-bg);">
             ${details.has_poster ?
@@ -651,8 +672,8 @@ function displayMediaDetails(details) {
           </div>
         </div>
         <div class="w-full sm:w-2/3">
-          <div class="mb-3">
-            <div class="flex items-center gap-2 mb-2">
+          <div class="mb-4">
+            <div class="flex flex-wrap items-center gap-2 mb-3">
               ${details.vote_average ? `
                 <span class="bg-red-600 text-white px-2 py-1 rounded font-bold text-sm">
                   ${Math.round(details.vote_average * 10) / 10}
@@ -664,16 +685,16 @@ function displayMediaDetails(details) {
               }
               ${details.runtime ? `<span class="text-gray-400 text-sm">${Math.floor(details.runtime / 60)}h ${details.runtime % 60}m</span>` : ''}
             </div>
-            <p class="text-gray-300 text-sm">${details.overview || 'No overview available'}</p>
+            <p class="text-gray-300 text-sm sm:text-base">${details.overview || 'No overview available'}</p>
           </div>
 
-          <div class="grid grid-cols-2 gap-2 mb-2">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
             ${details.genres && details.genres.length > 0 ? `
               <div>
-                <h3 class="text-xs font-semibold text-gray-400 mb-1">Genres</h3>
+                <h3 class="text-xs sm:text-sm font-semibold text-gray-400 mb-1">Genres</h3>
                 <div class="flex flex-wrap gap-1">
                   ${details.genres.map(genre => `
-                    <span class="bg-gray-700 text-gray-300 px-2 py-0.5 rounded text-xs">${genre.name}</span>
+                    <span class="bg-gray-700 text-gray-300 px-2 py-0.5 rounded text-xs sm:text-sm">${genre.name}</span>
                   `).join('')}
                 </div>
               </div>
@@ -681,10 +702,10 @@ function displayMediaDetails(details) {
 
             ${details.cast && details.cast.length > 0 ? `
               <div>
-                <h3 class="text-xs font-semibold text-gray-400 mb-1">Cast</h3>
+                <h3 class="text-xs sm:text-sm font-semibold text-gray-400 mb-1">Cast</h3>
                 <div class="flex flex-wrap gap-1">
                   ${details.cast.map(person => `
-                    <span class="bg-gray-700 text-gray-300 px-2 py-0.5 rounded text-xs">${person.name}</span>
+                    <span class="bg-gray-700 text-gray-300 px-2 py-0.5 rounded text-xs sm:text-sm">${person.name}</span>
                   `).join('')}
                 </div>
               </div>
@@ -692,10 +713,10 @@ function displayMediaDetails(details) {
 
             ${(details.directors && details.directors.length > 0) ? `
               <div>
-                <h3 class="text-xs font-semibold text-gray-400 mb-1">Director</h3>
+                <h3 class="text-xs sm:text-sm font-semibold text-gray-400 mb-1">Director</h3>
                 <div class="flex flex-wrap gap-1">
                   ${details.directors.map(person => `
-                    <span class="bg-gray-700 text-gray-300 px-2 py-0.5 rounded text-xs">${person.name}</span>
+                    <span class="bg-gray-700 text-gray-300 px-2 py-0.5 rounded text-xs sm:text-sm">${person.name}</span>
                   `).join('')}
                 </div>
               </div>
@@ -703,10 +724,10 @@ function displayMediaDetails(details) {
 
             ${(details.creators && details.creators.length > 0) ? `
               <div>
-                <h3 class="text-xs font-semibold text-gray-400 mb-1">Created By</h3>
+                <h3 class="text-xs sm:text-sm font-semibold text-gray-400 mb-1">Created By</h3>
                 <div class="flex flex-wrap gap-1">
                   ${details.creators.map(person => `
-                    <span class="bg-gray-700 text-gray-300 px-2 py-0.5 rounded text-xs">${person.name}</span>
+                    <span class="bg-gray-700 text-gray-300 px-2 py-0.5 rounded text-xs sm:text-sm">${person.name}</span>
                   `).join('')}
                 </div>
               </div>
@@ -715,11 +736,11 @@ function displayMediaDetails(details) {
         </div>
       </div>
 
-      <div class="mt-3">
-        <h3 class="text-sm sm:text-base font-semibold mb-1 sm:mb-2">Available Torrents</h3>
+      <div class="mt-4">
+        <h3 class="text-base sm:text-lg font-semibold mb-2 sm:mb-3">Available Torrents</h3>
         <div class="media-torrents-container">
-          <div id="media-torrents" class="p-1">
-            <div class="flex justify-center p-2"><div class="loader"></div></div>
+          <div id="media-torrents" class="p-2">
+            <div class="flex justify-center p-3"><div class="loader"></div></div>
           </div>
         </div>
       </div>
@@ -728,6 +749,9 @@ function displayMediaDetails(details) {
     modalContent.innerHTML = html;
   }
 }
+
+// Global variable to store all torrents for filtering
+let allTorrents = [];
 
 // Fetch torrents for a media title
 async function fetchTorrentsForMedia(title, year) {
@@ -742,6 +766,9 @@ async function fetchTorrentsForMedia(title, year) {
       const response = await fetch(`/api/torrents?q=${encodeURIComponent(searchQuery)}`);
       const data = await response.json();
 
+      // Store all torrents globally for filtering
+      allTorrents = data;
+
       // Display torrents
       displayMediaTorrents(data);
     } catch (error) {
@@ -751,56 +778,478 @@ async function fetchTorrentsForMedia(title, year) {
   }
 }
 
+// Array to store selected torrents
+let selectedTorrents = [];
+
 // Display torrents for media
-function displayMediaTorrents(torrents) {
+function displayMediaTorrents(torrents, filters = {}) {
   const torrentsContainer = document.getElementById('media-torrents');
 
   if (torrentsContainer) {
+    // Clear selected torrents when displaying new ones
+    selectedTorrents = [];
+
     if (!torrents || torrents.length === 0) {
       torrentsContainer.innerHTML = '<div class="text-center p-4 text-gray-400">No torrents found</div>';
       return;
     }
 
-    let html = `
-      <table class="table w-full">
-        <thead>
-          <tr>
-            <th class="py-1 sm:py-2">Name</th>
-            <th class="py-1 sm:py-2 text-center">Size</th>
-            <th class="py-1 sm:py-2 text-center">S</th>
-            <th class="py-1 sm:py-2 text-center">L</th>
-            <th class="py-1 sm:py-2 text-center"></th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
+    // Extract unique filter values
+    const qualities = new Set();
+    const years = new Set();
+    const episodeTypes = new Set(['all', 'complete', 'single']);
 
-    torrents.forEach(torrent => {
-      html += `
-        <tr class="hover:bg-gray-800">
-          <td class="py-1 sm:py-2 max-w-[120px] sm:max-w-xs truncate" title="${torrent.name}">${torrent.name}</td>
-          <td class="py-1 sm:py-2 text-center">${formatFileSize(parseInt(torrent.size))}</td>
-          <td class="py-1 sm:py-2 text-center text-green-500">${torrent.seeders}</td>
-          <td class="py-1 sm:py-2 text-center text-red-500">${torrent.leechers}</td>
-          <td class="py-1 sm:py-2 text-center">
-            <button
-              class="btn btn-primary btn-sm p-1"
-              onclick="downloadTorrent('${torrent.info_hash}', '${torrent.name.replace(/'/g, "\\'")}')"
-              title="Download"
-            >
-              <i class="fas fa-download"></i>
-            </button>
-          </td>
-        </tr>
-      `;
+    // Process torrents to extract filter values and apply filters
+    let filteredTorrents = torrents.filter(torrent => {
+      const metadata = extractMetadata(torrent.name);
+
+      // Add to filter options
+      if (metadata.quality) qualities.add(metadata.quality);
+      if (metadata.year) years.add(metadata.year);
+
+      // Apply filters if they exist
+      if (filters.quality && metadata.quality !== filters.quality) return false;
+      if (filters.year && metadata.year !== filters.year) return false;
+      if (filters.episodeType === 'complete' && !metadata.complete) return false;
+      if (filters.episodeType === 'single' && metadata.complete) return false;
+
+      return true;
     });
 
-    html += `
-          </tbody>
-        </table>
+    // Check if we're on mobile
+    const isMobile = window.innerWidth < 640;
+
+    // Create filter controls
+    let filterHtml = `
+      <div class="filter-controls">
+        <div class="filter-group">
+          <span class="filter-group-label">Quality</span>
+          <select id="quality-filter" class="filter-select" onchange="applyTorrentFilters()">
+            <option value="">All</option>
+            ${Array.from(qualities).sort().map(q =>
+              `<option value="${q}" ${filters.quality === q ? 'selected' : ''}>${q}</option>`
+            ).join('')}
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <span class="filter-group-label">Year</span>
+          <select id="year-filter" class="filter-select" onchange="applyTorrentFilters()">
+            <option value="">All</option>
+            ${Array.from(years).sort((a, b) => b - a).map(y =>
+              `<option value="${y}" ${filters.year === y ? 'selected' : ''}>${y}</option>`
+            ).join('')}
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <span class="filter-group-label">Type</span>
+          <select id="episode-type-filter" class="filter-select" onchange="applyTorrentFilters()">
+            ${Array.from(episodeTypes).map(t =>
+              `<option value="${t}" ${filters.episodeType === t ? 'selected' : ''}>${t === 'all' ? 'All' : t === 'complete' ? 'Complete Seasons' : 'Single Episodes'}</option>`
+            ).join('')}
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <span class="filter-group-label">&nbsp;</span>
+          <div class="flex space-x-2">
+            <button class="filter-reset" onclick="resetTorrentFilters()">
+              <i class="fas fa-times mr-1"></i> Reset Filters
+            </button>
+            <button id="select-all-complete-btn" class="filter-action hidden" onclick="selectAllCompleteSeasons()">
+              <i class="fas fa-check-double mr-1"></i> Select All Complete
+            </button>
+          </div>
+        </div>
+
+        <div class="filter-group ml-auto">
+          <span class="filter-group-label">Results</span>
+          <div class="text-sm">
+            <span class="font-medium">${filteredTorrents.length}</span> of ${torrents.length} torrents
+            ${Object.keys(filters).length > 0 ? '<span class="filter-badge">Filtered</span>' : ''}
+          </div>
+        </div>
+      </div>
     `;
 
+    let html = filterHtml + `
+      <div class="mb-2 flex justify-between items-center">
+        <div>
+          <label class="inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="select-all-torrents" class="form-checkbox" onchange="toggleAllTorrents(this.checked)">
+            <span class="ml-2 text-sm">Select All</span>
+          </label>
+        </div>
+        <button
+          id="download-selected-btn"
+          class="btn btn-primary btn-sm hidden"
+          onclick="downloadSelectedTorrents()"
+        >
+          <i class="fas fa-download mr-1"></i> Download Selected
+        </button>
+      </div>
+    `;
+
+    if (isMobile) {
+      // Mobile-optimized layout
+      html += `<div class="space-y-2">`;
+
+      filteredTorrents.forEach(torrent => {
+        // Extract metadata from filename
+        const metadata = extractMetadata(torrent.name);
+
+        // Create metadata chips HTML
+        let metadataChips = '';
+        if (metadata.quality || metadata.season || metadata.episode || metadata.year || metadata.complete) {
+          metadataChips = '<div class="metadata-chips">';
+
+          if (metadata.quality) {
+            metadataChips += `<span class="metadata-chip chip-quality">${metadata.quality}</span>`;
+          }
+
+          if (metadata.complete) {
+            if (metadata.complete === 'All') {
+              metadataChips += `<span class="metadata-chip chip-complete">Complete Series</span>`;
+            } else {
+              metadataChips += `<span class="metadata-chip chip-complete">S${metadata.complete.toString().padStart(2, '0')} Complete</span>`;
+            }
+          } else if (metadata.season && metadata.episode) {
+            metadataChips += `<span class="metadata-chip chip-season">S${metadata.season.toString().padStart(2, '0')}E${metadata.episode.toString().padStart(2, '0')}</span>`;
+          }
+
+          if (metadata.year) {
+            metadataChips += `<span class="metadata-chip chip-year">${metadata.year}</span>`;
+          }
+
+          metadataChips += '</div>';
+        }
+
+        html += `
+          <div class="p-2 border border-gray-700 rounded bg-gray-800 bg-opacity-50">
+            <div class="flex items-center mb-1">
+              <input
+                type="checkbox"
+                class="form-checkbox torrent-checkbox mr-2"
+                data-hash="${torrent.info_hash}"
+                data-name="${torrent.name.replace(/"/g, '&quot;')}"
+                onchange="updateSelectedTorrents()"
+              >
+              <div class="font-medium truncate flex-1" title="${torrent.name}">${torrent.name}</div>
+            </div>
+            ${metadataChips}
+            <div class="flex justify-between text-sm mb-2">
+              <span>${formatFileSize(parseInt(torrent.size))}</span>
+              <span>
+                <span class="text-green-500 mr-2"><i class="fas fa-arrow-up"></i> ${torrent.seeders}</span>
+                <span class="text-red-500"><i class="fas fa-arrow-down"></i> ${torrent.leechers}</span>
+              </span>
+            </div>
+            <div class="flex justify-end">
+              <button
+                class="btn btn-primary btn-sm"
+                onclick="downloadTorrent('${torrent.info_hash}', '${torrent.name.replace(/'/g, "\\'")}')"
+              >
+                <i class="fas fa-download mr-1"></i> Download
+              </button>
+            </div>
+          </div>
+        `;
+      });
+
+      html += `</div>`;
+    } else {
+      // Desktop table layout
+      html += `
+        <table class="table w-full">
+          <thead>
+            <tr>
+              <th class="py-1 sm:py-2 col-checkbox"></th>
+              <th class="py-1 sm:py-2 col-name">Name</th>
+              <th class="py-1 sm:py-2 text-center col-size">Size</th>
+              <th class="py-1 sm:py-2 text-center col-seeders">S</th>
+              <th class="py-1 sm:py-2 text-center col-leechers">L</th>
+              <th class="py-1 sm:py-2 text-center col-actions"></th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      filteredTorrents.forEach(torrent => {
+        // Extract metadata from filename
+        const metadata = extractMetadata(torrent.name);
+
+        // Create metadata chips HTML
+        let metadataChips = '';
+        if (metadata.quality || metadata.season || metadata.episode || metadata.year || metadata.complete) {
+          metadataChips = '<div class="metadata-chips">';
+
+          if (metadata.quality) {
+            metadataChips += `<span class="metadata-chip chip-quality">${metadata.quality}</span>`;
+          }
+
+          if (metadata.complete) {
+            if (metadata.complete === 'All') {
+              metadataChips += `<span class="metadata-chip chip-complete">Complete Series</span>`;
+            } else {
+              metadataChips += `<span class="metadata-chip chip-complete">S${metadata.complete.toString().padStart(2, '0')} Complete</span>`;
+            }
+          } else if (metadata.season && metadata.episode) {
+            metadataChips += `<span class="metadata-chip chip-season">S${metadata.season.toString().padStart(2, '0')}E${metadata.episode.toString().padStart(2, '0')}</span>`;
+          }
+
+          if (metadata.year) {
+            metadataChips += `<span class="metadata-chip chip-year">${metadata.year}</span>`;
+          }
+
+          metadataChips += '</div>';
+        }
+
+        html += `
+          <tr class="hover:bg-gray-800">
+            <td class="py-1 sm:py-2 text-center col-checkbox">
+              <input
+                type="checkbox"
+                class="form-checkbox torrent-checkbox"
+                data-hash="${torrent.info_hash}"
+                data-name="${torrent.name.replace(/"/g, '&quot;')}"
+                onchange="updateSelectedTorrents()"
+              >
+            </td>
+            <td class="py-1 sm:py-2 col-name">
+              <div class="truncate" title="${torrent.name}">${torrent.name}</div>
+              <div class="metadata-container" style="max-width: 100%; overflow-x: hidden;">
+                ${metadataChips}
+              </div>
+            </td>
+            <td class="py-1 sm:py-2 text-center col-size">${formatFileSize(parseInt(torrent.size))}</td>
+            <td class="py-1 sm:py-2 text-center text-green-500 col-seeders">${torrent.seeders}</td>
+            <td class="py-1 sm:py-2 text-center text-red-500 col-leechers">${torrent.leechers}</td>
+            <td class="py-1 sm:py-2 text-center col-actions">
+              <button
+                class="btn btn-primary btn-sm p-1"
+                onclick="downloadTorrent('${torrent.info_hash}', '${torrent.name.replace(/'/g, "\\'")}')"
+                title="Download"
+              >
+                <i class="fas fa-download"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      });
+
+      html += `
+            </tbody>
+          </table>
+      `;
+    }
+
     torrentsContainer.innerHTML = html;
+  }
+}
+
+// Toggle all torrent checkboxes
+function toggleAllTorrents(checked) {
+  const checkboxes = document.querySelectorAll('.torrent-checkbox');
+  checkboxes.forEach(checkbox => {
+    checkbox.checked = checked;
+  });
+  updateSelectedTorrents();
+}
+
+// Apply torrent filters
+function applyTorrentFilters() {
+  const qualityFilter = document.getElementById('quality-filter');
+  const yearFilter = document.getElementById('year-filter');
+  const episodeTypeFilter = document.getElementById('episode-type-filter');
+  const selectAllCompleteBtn = document.getElementById('select-all-complete-btn');
+
+  const filters = {};
+
+  if (qualityFilter && qualityFilter.value) {
+    filters.quality = qualityFilter.value;
+  }
+
+  if (yearFilter && yearFilter.value) {
+    filters.year = parseInt(yearFilter.value);
+  }
+
+  if (episodeTypeFilter && episodeTypeFilter.value !== 'all') {
+    filters.episodeType = episodeTypeFilter.value;
+
+    // Show the select all complete button only when filtering for complete seasons
+    if (filters.episodeType === 'complete' && selectAllCompleteBtn) {
+      selectAllCompleteBtn.classList.remove('hidden');
+    } else if (selectAllCompleteBtn) {
+      selectAllCompleteBtn.classList.add('hidden');
+    }
+  } else if (selectAllCompleteBtn) {
+    selectAllCompleteBtn.classList.add('hidden');
+  }
+
+  // Re-display torrents with filters
+  displayMediaTorrents(allTorrents, filters);
+}
+
+// Reset all torrent filters
+function resetTorrentFilters() {
+  const qualityFilter = document.getElementById('quality-filter');
+  const yearFilter = document.getElementById('year-filter');
+  const episodeTypeFilter = document.getElementById('episode-type-filter');
+  const selectAllCompleteBtn = document.getElementById('select-all-complete-btn');
+
+  if (qualityFilter) qualityFilter.value = '';
+  if (yearFilter) yearFilter.value = '';
+  if (episodeTypeFilter) episodeTypeFilter.value = 'all';
+
+  // Hide the select all complete button
+  if (selectAllCompleteBtn) {
+    selectAllCompleteBtn.classList.add('hidden');
+  }
+
+  // Re-display torrents without filters
+  displayMediaTorrents(allTorrents);
+}
+
+// Select all complete seasons
+function selectAllCompleteSeasons() {
+  // Get all visible torrent checkboxes
+  const checkboxes = document.querySelectorAll('.torrent-checkbox');
+  let selectedCount = 0;
+
+  checkboxes.forEach(checkbox => {
+    const torrentName = checkbox.getAttribute('data-name');
+    if (torrentName) {
+      const metadata = extractMetadata(torrentName);
+
+      // Check if this is a complete season
+      if (metadata.complete) {
+        checkbox.checked = true;
+        selectedCount++;
+      }
+    }
+  });
+
+  // Update the selected torrents
+  updateSelectedTorrents();
+
+  // Show a toast notification
+  if (selectedCount > 0) {
+    showToast(`Selected ${selectedCount} complete seasons`, 'success');
+  } else {
+    showToast('No complete seasons found to select', 'info');
+  }
+}
+
+// Update selected torrents array based on checkboxes
+function updateSelectedTorrents() {
+  selectedTorrents = [];
+  const checkboxes = document.querySelectorAll('.torrent-checkbox:checked');
+
+  checkboxes.forEach(checkbox => {
+    selectedTorrents.push({
+      hash: checkbox.getAttribute('data-hash'),
+      name: checkbox.getAttribute('data-name')
+    });
+  });
+
+  // Show/hide download selected button
+  const downloadSelectedBtn = document.getElementById('download-selected-btn');
+  if (downloadSelectedBtn) {
+    if (selectedTorrents.length > 0) {
+      downloadSelectedBtn.classList.remove('hidden');
+    } else {
+      downloadSelectedBtn.classList.add('hidden');
+    }
+  }
+
+  // Update select all checkbox
+  const selectAllCheckbox = document.getElementById('select-all-torrents');
+  const allCheckboxes = document.querySelectorAll('.torrent-checkbox');
+  if (selectAllCheckbox && allCheckboxes.length > 0) {
+    selectAllCheckbox.checked = selectedTorrents.length === allCheckboxes.length;
+  }
+}
+
+// Determine the most likely content type for a group of torrents
+function determineContentType(torrents) {
+  let movieCount = 0;
+  let tvShowCount = 0;
+
+  torrents.forEach(torrent => {
+    const metadata = extractMetadata(torrent.name);
+    if (metadata.contentType === 'movie') {
+      movieCount++;
+    } else if (metadata.contentType === 'tvshow') {
+      tvShowCount++;
+    }
+  });
+
+  // Return the dominant content type, or null if undetermined
+  if (movieCount > tvShowCount) {
+    return 'movie';
+  } else if (tvShowCount > movieCount) {
+    return 'tvshow';
+  } else if (movieCount > 0) {
+    // If tied but we have some detection, default to movie
+    return 'movie';
+  }
+
+  return null;
+}
+
+// Download selected torrents
+function downloadSelectedTorrents() {
+  if (selectedTorrents.length === 0) {
+    showToast('No torrents selected', 'warning');
+    return;
+  }
+
+  // Show download modal with multiple torrents
+  const modal = document.getElementById('download-modal');
+  const modalNameEl = document.getElementById('download-name');
+  const downloadForm = document.getElementById('download-form');
+  const downloadPathSelect = document.getElementById('download-path');
+
+  if (modal && modalNameEl && downloadForm && downloadPathSelect) {
+    // Set torrents info in modal
+    let torrentsList = '<ul class="text-sm mb-2 max-h-40 overflow-y-auto">';
+    selectedTorrents.forEach(torrent => {
+      torrentsList += `<li class="mb-1 truncate" title="${torrent.name}">${torrent.name}</li>`;
+    });
+    torrentsList += '</ul>';
+
+    modalNameEl.innerHTML = `<p class="mb-2 font-bold">${selectedTorrents.length} torrents selected:</p>${torrentsList}`;
+
+    // Store selected torrents in form data attribute as JSON
+    downloadForm.setAttribute('data-torrents', JSON.stringify(selectedTorrents));
+
+    // Auto-select the download path based on content type
+    const contentType = determineContentType(selectedTorrents);
+    const pathLabel = document.querySelector('label[for="download-path"]');
+
+    if (contentType === 'movie') {
+      downloadPathSelect.value = '/media/movies';
+      if (pathLabel) {
+        pathLabel.innerHTML = 'Save to: <span class="text-xs text-green-400 ml-1">(Auto-detected: Movies)</span>';
+      }
+    } else if (contentType === 'tvshow') {
+      downloadPathSelect.value = '/media/shows';
+      if (pathLabel) {
+        pathLabel.innerHTML = 'Save to: <span class="text-xs text-green-400 ml-1">(Auto-detected: TV Shows)</span>';
+      }
+    } else if (pathLabel) {
+      pathLabel.innerHTML = 'Save to:';
+    }
+
+    // Close the media details modal
+    const mediaDetailsModal = document.getElementById('media-details-modal');
+    if (mediaDetailsModal) {
+      mediaDetailsModal.classList.add('hidden');
+    }
+
+    // Show download modal
+    modal.classList.remove('hidden');
   }
 }
 
@@ -817,15 +1266,19 @@ function createMediaDetailsModal() {
   }, { passive: true });
 
   modal.innerHTML = `
-    <div class="absolute inset-0 bg-black bg-opacity-75"></div>
-    <div class="card p-3 sm:p-4 w-[95%] max-w-lg sm:max-w-2xl md:max-w-3xl z-10">
-      <div class="flex justify-between items-center mb-2 sm:mb-3">
-        <h3 id="media-details-title" class="text-base sm:text-lg font-semibold truncate pr-2">Media Details</h3>
-        <button onclick="document.getElementById('media-details-modal').classList.add('hidden')" class="text-gray-400 hover:text-white p-2 -mr-2">
+    <div class="absolute inset-0 bg-black bg-opacity-80"></div>
+    <div class="card p-4 sm:p-5 w-[95%] max-w-lg sm:max-w-2xl md:max-w-3xl z-10 overflow-hidden">
+      <div class="flex justify-between items-center mb-3 sm:mb-4 sticky top-0 bg-gray-800 z-10 pb-2 border-b border-gray-700">
+        <h3 id="media-details-title" class="text-base sm:text-xl font-semibold truncate pr-2">Media Details</h3>
+        <button
+          onclick="document.getElementById('media-details-modal').classList.add('hidden')"
+          class="text-gray-400 hover:text-white p-2 -mr-2 rounded-full hover:bg-gray-700"
+          aria-label="Close"
+        >
           <i class="fas fa-times text-lg"></i>
         </button>
       </div>
-      <div id="media-details-content" class="media-details-content"></div>
+      <div id="media-details-content" class="media-details-content overflow-y-auto"></div>
     </div>
   `;
 
@@ -838,14 +1291,36 @@ async function downloadTorrent(hash, name) {
   const modal = document.getElementById('download-modal');
   const modalNameEl = document.getElementById('download-name');
   const downloadForm = document.getElementById('download-form');
+  const downloadPathSelect = document.getElementById('download-path');
 
-  if (modal && modalNameEl && downloadForm) {
+  if (modal && modalNameEl && downloadForm && downloadPathSelect) {
     // Set torrent name in modal
-    modalNameEl.textContent = name;
+    modalNameEl.innerHTML = `<p class="font-semibold break-words">${name}</p>`;
 
     // Set data attributes for form submission
     downloadForm.setAttribute('data-hash', hash);
     downloadForm.setAttribute('data-name', name);
+
+    // Clear any previous torrents data
+    downloadForm.removeAttribute('data-torrents');
+
+    // Auto-select the download path based on content type
+    const metadata = extractMetadata(name);
+    const pathLabel = document.querySelector('label[for="download-path"]');
+
+    if (metadata.contentType === 'movie') {
+      downloadPathSelect.value = '/media/movies';
+      if (pathLabel) {
+        pathLabel.innerHTML = 'Save to: <span class="text-xs text-green-400 ml-1">(Auto-detected: Movie)</span>';
+      }
+    } else if (metadata.contentType === 'tvshow') {
+      downloadPathSelect.value = '/media/shows';
+      if (pathLabel) {
+        pathLabel.innerHTML = 'Save to: <span class="text-xs text-green-400 ml-1">(Auto-detected: TV Show)</span>';
+      }
+    } else if (pathLabel) {
+      pathLabel.innerHTML = 'Save to:';
+    }
 
     // Close the media details modal
     const mediaDetailsModal = document.getElementById('media-details-modal');
@@ -862,43 +1337,126 @@ async function downloadTorrent(hash, name) {
 // Submit download
 async function submitDownload(path) {
   const downloadForm = document.getElementById('download-form');
+  const torrentsJson = downloadForm.getAttribute('data-torrents');
   const hash = downloadForm.getAttribute('data-hash');
   const name = downloadForm.getAttribute('data-name');
 
-  if (!hash || !name || !path) {
-    showToast('Missing download information', 'error');
+  if (!path) {
+    showToast('Please select a download path', 'error');
     return;
   }
 
-  try {
-    const response = await fetch('/api/download', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        hash: hash,
-        name: name,
-        path: path
-      })
-    });
+  // Check if we're downloading multiple torrents or a single one
+  if (torrentsJson) {
+    // Multiple torrents
+    try {
+      const torrents = JSON.parse(torrentsJson);
+      if (torrents.length === 0) {
+        showToast('No torrents selected', 'error');
+        return;
+      }
 
-    const data = await response.json();
+      // Show loading state
+      const submitBtn = document.querySelector('#download-form button[type="button"]:last-child');
+      if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Downloading...';
+        submitBtn.disabled = true;
+      }
 
-    if (response.ok && data.success) {
-      showToast(`Started download: ${name}`, 'success');
+      let successCount = 0;
+      let failCount = 0;
+
+      // Process each torrent sequentially to avoid overwhelming the server
+      for (const torrent of torrents) {
+        try {
+          const response = await fetch('/api/download', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              hash: torrent.hash,
+              name: torrent.name,
+              path: path
+            })
+          });
+
+          const data = await response.json();
+
+          if (response.ok && data.success) {
+            successCount++;
+          } else {
+            failCount++;
+            console.error(`Failed to download ${torrent.name}: ${data.message || 'Unknown error'}`);
+          }
+        } catch (err) {
+          failCount++;
+          console.error(`Error downloading ${torrent.name}:`, err);
+        }
+      }
+
+      // Show results
+      if (successCount > 0 && failCount === 0) {
+        showToast(`Started ${successCount} downloads successfully`, 'success');
+      } else if (successCount > 0 && failCount > 0) {
+        showToast(`Started ${successCount} downloads, ${failCount} failed`, 'warning');
+      } else {
+        showToast('Failed to start any downloads', 'error');
+      }
 
       // Close modal
       const modal = document.getElementById('download-modal');
       if (modal) {
         modal.classList.add('hidden');
       }
-    } else {
-      showToast(data.message || 'Failed to start download', 'error');
+
+      // Reset button state
+      if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fas fa-download mr-1"></i> Download';
+        submitBtn.disabled = false;
+      }
+
+    } catch (error) {
+      console.error('Error processing multiple downloads:', error);
+      showToast('Error processing downloads', 'error');
     }
-  } catch (error) {
-    console.error('Error starting download:', error);
-    showToast('Error starting download', 'error');
+  } else {
+    // Single torrent
+    if (!hash || !name) {
+      showToast('Missing download information', 'error');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/download', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          hash: hash,
+          name: name,
+          path: path
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        showToast(`Started download: ${name}`, 'success');
+
+        // Close modal
+        const modal = document.getElementById('download-modal');
+        if (modal) {
+          modal.classList.add('hidden');
+        }
+      } else {
+        showToast(data.message || 'Failed to start download', 'error');
+      }
+    } catch (error) {
+      console.error('Error starting download:', error);
+      showToast('Error starting download', 'error');
+    }
   }
 }
 
@@ -1022,6 +1580,193 @@ function formatETA(seconds) {
   } else {
     return `${secs}s`;
   }
+}
+
+// Extract metadata from filename
+function extractMetadata(filename) {
+  const metadata = {
+    quality: null,
+    season: null,
+    episode: null,
+    year: null,
+    complete: null,
+    contentType: null // 'movie' or 'tvshow'
+  };
+
+  // Extract quality (common formats like 720p, 1080p, 4K, etc.)
+  const qualityRegex = /\b(4K|8K|720p|1080p|2160p|HDTV|WEB-DL|WEBRip|BRRip|BluRay|DVDRip|HDRip|XviD|HEVC|H\.?264|H\.?265|x264|x265|REMUX)\b/i;
+  const qualityMatch = filename.match(qualityRegex);
+  if (qualityMatch) {
+    metadata.quality = qualityMatch[0];
+  }
+
+  // Check for common quality terms if not found above
+  if (!metadata.quality) {
+    const commonQualityTerms = ['HD', 'UHD', 'SD', 'HQ'];
+    for (const term of commonQualityTerms) {
+      if (filename.includes(term)) {
+        metadata.quality = term;
+        break;
+      }
+    }
+  }
+
+  // Check for complete season patterns
+  // Format: S01.COMPLETE or S01 COMPLETE
+  const completeSeasonRegex = /S(\d{1,2})[\.\s]COMPLETE\b/i;
+  const completeMatch = filename.match(completeSeasonRegex);
+  if (completeMatch) {
+    metadata.complete = parseInt(completeMatch[1]);
+  }
+
+  // Format: Season 1 Complete
+  if (!metadata.complete) {
+    const altCompleteRegex = /Season\s?(\d{1,2})\s?Complete\b/i;
+    const altCompleteMatch = filename.match(altCompleteRegex);
+    if (altCompleteMatch) {
+      metadata.complete = parseInt(altCompleteMatch[1]);
+    }
+  }
+
+  // Format: The.Series.Name.Complete.S01
+  if (!metadata.complete) {
+    const postCompleteRegex = /COMPLETE\.S(\d{1,2})\b/i;
+    const postCompleteMatch = filename.match(postCompleteRegex);
+    if (postCompleteMatch) {
+      metadata.complete = parseInt(postCompleteMatch[1]);
+    }
+  }
+
+  // Format: The.Series.Name.S01.PACK or Season.1.PACK
+  if (!metadata.complete) {
+    const packRegex = /S(\d{1,2})[\.\s]PACK\b|Season\s?(\d{1,2})[\.\s]PACK\b/i;
+    const packMatch = filename.match(packRegex);
+    if (packMatch) {
+      metadata.complete = parseInt(packMatch[1] || packMatch[2]);
+    }
+  }
+
+  // Format: The.Series.Name.S01.FULL.SEASON
+  if (!metadata.complete) {
+    const fullSeasonRegex = /S(\d{1,2})[\.\s]FULL[\.\s]SEASON\b|Season\s?(\d{1,2})[\.\s]FULL\b/i;
+    const fullSeasonMatch = filename.match(fullSeasonRegex);
+    if (fullSeasonMatch) {
+      metadata.complete = parseInt(fullSeasonMatch[1] || fullSeasonMatch[2]);
+    }
+  }
+
+  // Format: Complete Series or Complete Collection
+  if (!metadata.complete && (/\bCOMPLETE\s(SERIES|COLLECTION|SEASON)\b/i.test(filename) ||
+                            /\b(SERIES|COLLECTION|SEASON)\sCOMPLETE\b/i.test(filename) ||
+                            /\bFULL\s(SERIES|COLLECTION|SEASON)\b/i.test(filename) ||
+                            /\bALL\sSEASONS\b/i.test(filename))) {
+    metadata.complete = 'All';
+  }
+
+  // Format: Season number without episode (e.g., S06 without E01)
+  // This is a common pattern for complete seasons
+  if (!metadata.complete) {
+    const seasonOnlyRegex = /\bS(\d{1,2})\b(?!E\d{1,2})/i;
+    const seasonOnlyMatch = filename.match(seasonOnlyRegex);
+    if (seasonOnlyMatch && !filename.match(/\bS\d{1,2}E\d{1,2}\b/i)) {
+      metadata.complete = parseInt(seasonOnlyMatch[1]);
+    }
+  }
+
+  // Format: "Season X" without episode (e.g., Season 6 without Episode)
+  if (!metadata.complete) {
+    const seasonWordRegex = /\bSeason\s(\d{1,2})\b(?!\s+Episode)/i;
+    const seasonWordMatch = filename.match(seasonWordRegex);
+    if (seasonWordMatch && !filename.match(/\bSeason\s\d{1,2}\s+Episode\s\d{1,2}\b/i)) {
+      metadata.complete = parseInt(seasonWordMatch[1]);
+    }
+  }
+
+  // Extract season and episode (S01E01 format) if not a complete season
+  if (!metadata.complete) {
+    const seasonEpisodeRegex = /S(\d{1,2})E(\d{1,2})/i;
+    const seasonEpisodeMatch = filename.match(seasonEpisodeRegex);
+    if (seasonEpisodeMatch) {
+      metadata.season = parseInt(seasonEpisodeMatch[1]);
+      metadata.episode = parseInt(seasonEpisodeMatch[2]);
+    }
+
+    // Alternative season and episode format (e.g., Season 1 Episode 1)
+    if (!metadata.season || !metadata.episode) {
+      const altSeasonEpisodeRegex = /Season\s?(\d{1,2})\s?Episode\s?(\d{1,2})/i;
+      const altMatch = filename.match(altSeasonEpisodeRegex);
+      if (altMatch) {
+        metadata.season = parseInt(altMatch[1]);
+        metadata.episode = parseInt(altMatch[2]);
+      }
+    }
+
+    // Another alternative format (e.g., 1x01)
+    if (!metadata.season || !metadata.episode) {
+      const numericSeasonEpRegex = /(\d{1,2})x(\d{1,2})/i;
+      const numericMatch = filename.match(numericSeasonEpRegex);
+      if (numericMatch) {
+        metadata.season = parseInt(numericMatch[1]);
+        metadata.episode = parseInt(numericMatch[2]);
+      }
+    }
+  }
+
+  // Extract year (4 digits in parentheses or brackets)
+  const yearRegex = /[\(\[\s](\d{4})[\)\]\s]/;
+  const yearMatch = filename.match(yearRegex);
+  if (yearMatch) {
+    metadata.year = parseInt(yearMatch[1]);
+  }
+
+  // Alternative year format (just 4 digits)
+  if (!metadata.year) {
+    const altYearRegex = /\b(19\d{2}|20\d{2})\b/;
+    const altYearMatch = filename.match(altYearRegex);
+    if (altYearMatch) {
+      metadata.year = parseInt(altYearMatch[1]);
+    }
+  }
+
+  // Determine content type based on extracted metadata
+  if (metadata.season || metadata.episode || metadata.complete) {
+    metadata.contentType = 'tvshow';
+  } else if (metadata.year) {
+    // If it has a year but no season/episode, it's likely a movie
+    metadata.contentType = 'movie';
+  } else {
+    // Additional checks for TV show patterns
+    const tvShowPatterns = [
+      /\b(?:s\d{1,2}|season\s?\d{1,2})\b/i,  // Season indicator without episode
+      /\b(?:tv series|tv show|series|episodes)\b/i,  // TV show keywords
+      /\b(?:complete|full|all)\s?(?:series|seasons|collection)\b/i  // Complete series indicators
+    ];
+
+    for (const pattern of tvShowPatterns) {
+      if (pattern.test(filename)) {
+        metadata.contentType = 'tvshow';
+        break;
+      }
+    }
+
+    // Additional checks for movie patterns
+    if (!metadata.contentType) {
+      const moviePatterns = [
+        /\b(?:movie|film)\b/i,  // Movie keywords
+        /\b(?:dvdrip|bdrip|bluray|web-?dl|hdrip)\b/i,  // Common movie release types
+        /\b(?:directors cut|extended|unrated)\b/i  // Movie edition types
+      ];
+
+      for (const pattern of moviePatterns) {
+        if (pattern.test(filename)) {
+          metadata.contentType = 'movie';
+          break;
+        }
+      }
+    }
+  }
+
+  return metadata;
 }
 
 // Delete torrent
@@ -1282,3 +2027,13 @@ function initLoginPage() {
     });
   }
 }
+
+// Make filter functions globally available
+window.applyTorrentFilters = applyTorrentFilters;
+window.resetTorrentFilters = resetTorrentFilters;
+window.selectAllCompleteSeasons = selectAllCompleteSeasons;
+window.toggleAllTorrents = toggleAllTorrents;
+window.updateSelectedTorrents = updateSelectedTorrents;
+window.downloadSelectedTorrents = downloadSelectedTorrents;
+window.downloadTorrent = downloadTorrent;
+window.showMediaDetails = showMediaDetails;
