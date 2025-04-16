@@ -9,12 +9,15 @@ RUN pip install python-dotenv
 
 # Copy application files
 COPY server.py .
-COPY libs/tpbclient.py .
-COPY libs/users.py .
-COPY libs/logs.py .
-COPY libs/settings.py .
-COPY libs/passkeys.py .
-COPY libs/tmdbclient.py .
+
+# Create libs directory and copy library files
+RUN mkdir -p libs
+COPY libs/tpbclient.py ./libs/
+COPY libs/users.py ./libs/
+COPY libs/logs.py ./libs/
+COPY libs/settings.py ./libs/
+COPY libs/passkeys.py ./libs/
+COPY libs/tmdbclient.py ./libs/
 COPY static/ ./static/
 
 # Create directories for persistent data
