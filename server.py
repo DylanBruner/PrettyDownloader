@@ -388,6 +388,21 @@ def route_api_search():
     else:
         # Direct TPB search (fallback)
         search_results = tconn.search(query)
+
+        # Filter out adult content if the setting is enabled
+        hide_adult = os.environ.get('hide-adult-content', 'true').lower() == 'true'
+        if hide_adult:
+            # Filter out results with XXX in the name or in adult categories (500-599)
+            original_count = len(search_results)
+            search_results = [
+                result for result in search_results
+                if 'XXX' not in result['name'].upper() and
+                   not (result.get('category') and 500 <= int(result['category']) < 600)
+            ]
+            filtered_count = original_count - len(search_results)
+            if filtered_count > 0:
+                print(f"[INFO] Filtered out {filtered_count} adult content results")
+
         return jsonify(search_results)
 
 @app.route('/api/tmdb/image/<path:image_path>')
@@ -443,6 +458,21 @@ def route_api_torrents():
 
     print(f"[INFO] Searching TPB for {query} with category {category}")
     search_results = tconn.search(query, category)
+
+    # Filter out adult content if the setting is enabled
+    hide_adult = os.environ.get('hide-adult-content', 'true').lower() == 'true'
+    if hide_adult:
+        # Filter out results with XXX in the name or in adult categories (500-599)
+        original_count = len(search_results)
+        search_results = [
+            result for result in search_results
+            if 'XXX' not in result['name'].upper() and
+               not (result.get('category') and 500 <= int(result['category']) < 600)
+        ]
+        filtered_count = original_count - len(search_results)
+        if filtered_count > 0:
+            print(f"[INFO] Filtered out {filtered_count} adult content results")
+
     return jsonify(search_results)
 
 @app.route('/api/fetch', methods=["GET"])

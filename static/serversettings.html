@@ -128,6 +128,23 @@
             </div>
           </div>
 
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Content Filtering</h3>
+            <p class="text-sm text-gray-400 mb-4">
+              These settings control what content is filtered from search results.
+            </p>
+
+            <div class="grid grid-cols-1 gap-6">
+              <div class="flex items-center">
+                <label class="flex items-center cursor-pointer">
+                  <input type="checkbox" id="hide-adult-content" name="hide-adult-content" class="mr-2">
+                  <span>Hide Adult Content</span>
+                </label>
+                <p class="text-xs text-gray-400 mt-1">Filter out adult content from search results (items with XXX in the name, etc.)</p>
+              </div>
+            </div>
+          </div>
+
           <div class="flex justify-end">
             <button type="submit" class="btn btn-primary">
               <i class="fas fa-save mr-2"></i> Save Changes
@@ -226,6 +243,9 @@
           document.getElementById('RP_ORIGIN').value = data.settings['RP_ORIGIN'] || 'http://localhost';
           document.getElementById('auto-prompt-passkeys').checked = data.settings['auto-prompt-passkeys'] !== false; // Default to true
 
+          // Content filtering settings
+          document.getElementById('hide-adult-content').checked = data.settings['hide-adult-content'] !== false; // Default to true
+
           // Display current config
           displayCurrentConfig(data.settings, data.overridden);
         } else {
@@ -253,7 +273,10 @@
         'RP_ID': document.getElementById('RP_ID').value,
         'RP_NAME': document.getElementById('RP_NAME').value,
         'RP_ORIGIN': document.getElementById('RP_ORIGIN').value,
-        'auto-prompt-passkeys': document.getElementById('auto-prompt-passkeys').checked
+        'auto-prompt-passkeys': document.getElementById('auto-prompt-passkeys').checked,
+
+        // Content filtering settings
+        'hide-adult-content': document.getElementById('hide-adult-content').checked
       };
 
       try {

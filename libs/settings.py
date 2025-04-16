@@ -37,7 +37,10 @@ def get_settings_from_env():
         "RP_ID": os.environ.get("RP_ID", "localhost"),
         "RP_NAME": os.environ.get("RP_NAME", "PrettyDownloader"),
         "RP_ORIGIN": os.environ.get("RP_ORIGIN", "http://localhost"),
-        "auto-prompt-passkeys": os.environ.get("auto-prompt-passkeys", "true").lower() == "true"
+        "auto-prompt-passkeys": os.environ.get("auto-prompt-passkeys", "true").lower() == "true",
+
+        # Content filtering settings
+        "hide-adult-content": os.environ.get("hide-adult-content", "true").lower() == "true"
     }
 
     return env_settings
