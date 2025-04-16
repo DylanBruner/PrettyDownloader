@@ -43,6 +43,10 @@ function initDirectSearch() {
   const liveSearchInput = document.getElementById('live-search-input');
   const clearLiveSearchBtn = document.getElementById('clear-live-search');
 
+  // Check for URL parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  const searchQuery = urlParams.get('q');
+
   if (directSearchForm && directSearchResults) {
     // Set up event listeners for filters
     const contentTypeFilter = document.getElementById('content-type-filter');
@@ -174,6 +178,59 @@ function initDirectSearch() {
         }
       }
     });
+  }
+
+  // If search query parameter exists, fill the search input and perform search directly
+  if (searchQuery && directSearchForm) {
+    const searchInput = document.getElementById('direct-search-input');
+    if (searchInput) {
+      // Set the input value
+      searchInput.value = searchQuery;
+
+      // Show loading state
+      if (directSearchResults) {
+        directSearchResults.innerHTML = '<div class="flex justify-center p-8"><div class="loader"></div></div>';
+      }
+
+      // Reset live search filter
+      if (liveSearchInput) {
+        liveSearchInput.value = '';
+        directSearchFilters.liveSearch = '';
+        if (clearLiveSearchBtn) {
+          clearLiveSearchBtn.classList.add('hidden');
+        }
+      }
+
+      // Directly make the API call instead of triggering form submission
+      (async () => {
+        try {
+          // Search TPB directly
+          const response = await fetch(`/api/torrents?q=${encodeURIComponent(searchQuery)}`);
+          const data = await response.json();
+
+          // Store all results globally
+          allDirectResults = data;
+
+          // Show live search container if we have results
+          if (data && data.length > 0 && liveSearchContainer) {
+            liveSearchContainer.classList.remove('hidden');
+          }
+
+          // Display search results
+          displayDirectSearchResults(data);
+        } catch (error) {
+          console.error('Error searching:', error);
+          if (directSearchResults) {
+            directSearchResults.innerHTML = '<div class="text-center p-8 text-red-500">Error searching. Please try again.</div>';
+          }
+
+          // Hide live search container on error
+          if (liveSearchContainer) {
+            liveSearchContainer.classList.add('hidden');
+          }
+        }
+      })();
+    }
   }
 }
 

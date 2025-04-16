@@ -619,36 +619,38 @@ function displayTPBResults(results) {
 
 // Show media details
 async function showMediaDetails(id, mediaType) {
-  // Show loading state in modal
-  const modal = document.getElementById('media-details-modal');
-  const modalContent = document.getElementById('media-details-content');
+  try {
+    // Fetch media details from TMDB
+    const response = await fetch(`/api/tmdb/details?id=${id}&type=${mediaType}`);
+    const data = await response.json();
 
-  if (modal && modalContent) {
-    // Show modal with loading state
-    modalContent.innerHTML = '<div class="flex justify-center p-8"><div class="loader"></div></div>';
-    modal.classList.remove('hidden');
+    if (data.success && data.details) {
+      // Instead of showing the modal, redirect to direct search with the search term prefilled
+      const searchQuery = data.details.year ? `${data.details.title} ${data.details.year}` : data.details.title;
 
-    // Ensure modal is scrollable on mobile
-    ensureModalScrollable();
+      // Use location.replace instead of location.href to avoid adding to browser history
+      // This might help with the page refresh issue
+      const url = `/directsearch?q=${encodeURIComponent(searchQuery)}`;
+      console.log('Redirecting to:', url);
 
-    try {
-      // Fetch media details from TMDB
-      const response = await fetch(`/api/tmdb/details?id=${id}&type=${mediaType}`);
-      const data = await response.json();
+      // Create a form and submit it programmatically to navigate to the direct search page
+      const form = document.createElement('form');
+      form.method = 'GET';
+      form.action = '/directsearch';
 
-      if (data.success && data.details) {
-        // Display media details
-        displayMediaDetails(data.details);
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'q';
+      input.value = searchQuery;
 
-        // Fetch torrents for this title
-        fetchTorrentsForMedia(data.details.title, data.details.year);
-      } else {
-        modalContent.innerHTML = '<div class="text-center p-8 text-red-500">Failed to load details</div>';
-      }
-    } catch (error) {
-      console.error('Error fetching media details:', error);
-      modalContent.innerHTML = '<div class="text-center p-8 text-red-500">Error loading details. Please try again.</div>';
+      form.appendChild(input);
+      document.body.appendChild(form);
+      form.submit();
+    } else {
+      console.error('Failed to load details');
     }
+  } catch (error) {
+    console.error('Error fetching media details:', error);
   }
 }
 
