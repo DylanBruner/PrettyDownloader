@@ -8,7 +8,6 @@ from flask_session import Session
 from dotenv import load_dotenv
 from libs.providers.provider_manager import ProviderManager
 from libs.providers.piratebay_provider import PirateBayProvider
-from libs.providers.sample_provider import SampleProvider
 from libs.tmdbclient import TMDBClient
 from qbittorrent import Client
 import libs.users as users
@@ -64,10 +63,6 @@ provider_manager = ProviderManager()
 # Register providers
 piratebay_provider = PirateBayProvider()
 provider_manager.register_provider("piratebay", piratebay_provider)
-
-# Register sample provider (disabled by default)
-sample_provider = SampleProvider()
-provider_manager.register_provider("sample", sample_provider)
 
 # Initialize TMDB client
 tmdb = TMDBClient()
