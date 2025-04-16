@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from libs.providers.provider_manager import ProviderManager
 from libs.providers.piratebay_provider import PirateBayProvider
 from libs.providers.sample_provider import SampleProvider
+from libs.providers.yts_provider import YTSProvider
 from libs.tmdbclient import TMDBClient
 from qbittorrent import Client
 import libs.users as users
@@ -68,6 +69,11 @@ provider_manager.register_provider("piratebay", piratebay_provider)
 # Register sample provider (disabled by default)
 sample_provider = SampleProvider()
 provider_manager.register_provider("sample", sample_provider)
+
+# Register YTS provider
+yts_provider = YTSProvider()
+provider_manager.register_provider("yts", yts_provider)
+
 
 # Load provider settings from settings database
 try:
