@@ -659,6 +659,11 @@ body {
   color: white;
 }
 
+.tag-provider {
+  background-color: #9d174d;
+  color: white;
+}
+
 /* Toast notifications */
 .toast {
   position: fixed;

@@ -11,6 +11,7 @@ let directSearchFilters = {
   episodeType: 'all',
   year: '',
   quality: '',
+  provider: '',
   liveSearch: ''
 };
 
@@ -48,6 +49,7 @@ function initDirectSearch() {
     const episodeTypeFilter = document.getElementById('episode-type-filter');
     const yearFilter = document.getElementById('year-filter');
     const qualityFilter = document.getElementById('quality-filter');
+    const providerFilter = document.getElementById('provider-filter');
 
     if (contentTypeFilter) {
       contentTypeFilter.addEventListener('change', function() {
@@ -79,6 +81,15 @@ function initDirectSearch() {
     if (qualityFilter) {
       qualityFilter.addEventListener('change', function() {
         directSearchFilters.quality = this.value;
+        if (allDirectResults.length > 0) {
+          displayDirectSearchResults(allDirectResults);
+        }
+      });
+    }
+
+    if (providerFilter) {
+      providerFilter.addEventListener('change', function() {
+        directSearchFilters.provider = this.value;
         if (allDirectResults.length > 0) {
           displayDirectSearchResults(allDirectResults);
         }
@@ -182,9 +193,10 @@ function displayDirectSearchResults(results, skipFilterUpdate = false) {
     return;
   }
 
-  // Extract all available years and qualities for filter options
+  // Extract all available years, qualities, and providers for filter options
   const years = new Set();
   const qualities = new Set();
+  const providers = new Set();
 
   // Apply main filters first
   let filteredResults = results.filter(result => {
@@ -193,6 +205,7 @@ function displayDirectSearchResults(results, skipFilterUpdate = false) {
     // Add to filter options
     if (metadata.year) years.add(metadata.year);
     if (metadata.quality) qualities.add(metadata.quality);
+    if (result.provider) providers.add(result.provider);
 
     // Apply content type filter
     if (directSearchFilters.contentType !== 'all') {
@@ -211,6 +224,9 @@ function displayDirectSearchResults(results, skipFilterUpdate = false) {
 
     // Apply quality filter
     if (directSearchFilters.quality && metadata.quality !== directSearchFilters.quality) return false;
+
+    // Apply provider filter
+    if (directSearchFilters.provider && result.provider !== directSearchFilters.provider) return false;
 
     return true;
   });
@@ -252,7 +268,7 @@ function displayDirectSearchResults(results, skipFilterUpdate = false) {
 
   // Update filter options (unless we're just updating for live search)
   if (!skipFilterUpdate) {
-    updateFilterOptions(years, qualities);
+    updateFilterOptions(years, qualities, providers);
   }
 
   // Check if we have results after filtering
@@ -360,6 +376,10 @@ function displayDirectSearchResults(results, skipFilterUpdate = false) {
               <h3 class="text-base font-semibold mb-2">${highlightedName}</h3>
 
               <div class="flex flex-wrap gap-1 mb-2">
+                ${result.provider ?
+                  `<span class="tag tag-provider ${directSearchFilters.liveSearch && result.provider.toLowerCase().includes(directSearchFilters.liveSearch.toLowerCase()) ? 'highlight-tag' : ''}">
+                    ${result.provider}
+                  </span>` : ''}
                 ${metadata.quality ?
                   `<span class="tag tag-quality ${directSearchFilters.liveSearch && metadata.quality.toLowerCase().includes(directSearchFilters.liveSearch.toLowerCase()) ? 'highlight-tag' : ''}">
                     ${metadata.quality}
@@ -459,6 +479,10 @@ function displayDirectSearchResults(results, skipFilterUpdate = false) {
           <td class="py-1 sm:py-2">
             <div class="font-medium">${highlightedName}</div>
             <div class="flex flex-wrap gap-1 mt-1">
+              ${result.provider ?
+                `<span class="tag tag-provider ${directSearchFilters.liveSearch && result.provider.toLowerCase().includes(directSearchFilters.liveSearch.toLowerCase()) ? 'highlight-tag' : ''}">
+                  ${result.provider}
+                </span>` : ''}
               ${metadata.quality ?
                 `<span class="tag tag-quality ${directSearchFilters.liveSearch && metadata.quality.toLowerCase().includes(directSearchFilters.liveSearch.toLowerCase()) ? 'highlight-tag' : ''}">
                   ${metadata.quality}
@@ -521,9 +545,10 @@ function displayDirectSearchResults(results, skipFilterUpdate = false) {
 }
 
 // Update filter options based on available data
-function updateFilterOptions(years, qualities) {
+function updateFilterOptions(years, qualities, providers) {
   const yearFilter = document.getElementById('year-filter');
   const qualityFilter = document.getElementById('quality-filter');
+  const providerFilter = document.getElementById('provider-filter');
 
   if (yearFilter) {
     // Get current selection
@@ -564,6 +589,27 @@ function updateFilterOptions(years, qualities) {
         option.selected = true;
       }
       qualityFilter.appendChild(option);
+    });
+  }
+
+  if (providerFilter) {
+    // Get current selection
+    const currentProvider = providerFilter.value;
+
+    // Clear existing options except the first one
+    while (providerFilter.options.length > 1) {
+      providerFilter.remove(1);
+    }
+
+    // Add new options
+    Array.from(providers).sort().forEach(provider => {
+      const option = document.createElement('option');
+      option.value = provider;
+      option.textContent = provider;
+      if (currentProvider === provider) {
+        option.selected = true;
+      }
+      providerFilter.appendChild(option);
     });
   }
 }

@@ -805,6 +805,7 @@ function displayMediaTorrents(torrents, filters = {}) {
     const qualities = new Set();
     const years = new Set();
     const episodeTypes = new Set(['all', 'complete', 'single']);
+    const providers = new Set();
 
     // Process torrents to extract filter values and apply filters
     let filteredTorrents = torrents.filter(torrent => {
@@ -813,12 +814,14 @@ function displayMediaTorrents(torrents, filters = {}) {
       // Add to filter options
       if (metadata.quality) qualities.add(metadata.quality);
       if (metadata.year) years.add(metadata.year);
+      if (torrent.provider) providers.add(torrent.provider);
 
       // Apply filters if they exist
       if (filters.quality && metadata.quality !== filters.quality) return false;
       if (filters.year && metadata.year !== filters.year) return false;
       if (filters.episodeType === 'complete' && !metadata.complete) return false;
       if (filters.episodeType === 'single' && metadata.complete) return false;
+      if (filters.provider && torrent.provider !== filters.provider) return false;
 
       return true;
     });
@@ -857,6 +860,18 @@ function displayMediaTorrents(torrents, filters = {}) {
             ).join('')}
           </select>
         </div>
+
+        ${providers.size > 1 ? `
+        <div class="filter-group">
+          <span class="filter-group-label">Provider</span>
+          <select id="provider-filter" class="filter-select" onchange="applyTorrentFilters()">
+            <option value="">All</option>
+            ${Array.from(providers).sort().map(p =>
+              `<option value="${p}" ${filters.provider === p ? 'selected' : ''}>${p}</option>`
+            ).join('')}
+          </select>
+        </div>
+        ` : ''}
 
         <div class="filter-group">
           <span class="filter-group-label">&nbsp;</span>
@@ -933,7 +948,7 @@ function displayMediaTorrents(torrents, filters = {}) {
         }
 
         html += `
-          <div class="p-2 border border-gray-700 rounded bg-gray-800 bg-opacity-50">
+          <div class="p-2 border border-gray-700 rounded bg-gray-800 bg-opacity-50" data-provider="${torrent.provider || ''}">
             <div class="flex items-center mb-1">
               <input
                 type="checkbox"
@@ -955,7 +970,7 @@ function displayMediaTorrents(torrents, filters = {}) {
             <div class="flex justify-end">
               <button
                 class="btn btn-primary btn-sm"
-                onclick="downloadTorrent('${torrent.info_hash}', '${torrent.name.replace(/'/g, "\\'")}')"
+                onclick="downloadTorrent('${torrent.info_hash}', '${torrent.name.replace(/'/g, "\\'")}'${torrent.provider ? `, '${torrent.provider}'` : ''})"
               >
                 <i class="fas fa-download mr-1"></i> Download
               </button>
@@ -1013,7 +1028,7 @@ function displayMediaTorrents(torrents, filters = {}) {
         }
 
         html += `
-          <tr class="hover:bg-gray-800">
+          <tr class="hover:bg-gray-800" data-provider="${torrent.provider || ''}">
             <td class="py-1 sm:py-2 text-center col-checkbox">
               <input
                 type="checkbox"
@@ -1035,7 +1050,7 @@ function displayMediaTorrents(torrents, filters = {}) {
             <td class="py-1 sm:py-2 text-center col-actions">
               <button
                 class="btn btn-primary btn-sm p-1"
-                onclick="downloadTorrent('${torrent.info_hash}', '${torrent.name.replace(/'/g, "\\'")}')"
+                onclick="downloadTorrent('${torrent.info_hash}', '${torrent.name.replace(/'/g, "\\'")}'${torrent.provider ? `, '${torrent.provider}'` : ''})"
                 title="Download"
               >
                 <i class="fas fa-download"></i>
@@ -1069,6 +1084,7 @@ function applyTorrentFilters() {
   const qualityFilter = document.getElementById('quality-filter');
   const yearFilter = document.getElementById('year-filter');
   const episodeTypeFilter = document.getElementById('episode-type-filter');
+  const providerFilter = document.getElementById('provider-filter');
   const selectAllCompleteBtn = document.getElementById('select-all-complete-btn');
 
   const filters = {};
@@ -1094,6 +1110,10 @@ function applyTorrentFilters() {
     selectAllCompleteBtn.classList.add('hidden');
   }
 
+  if (providerFilter && providerFilter.value) {
+    filters.provider = providerFilter.value;
+  }
+
   // Re-display torrents with filters
   displayMediaTorrents(allTorrents, filters);
 }
@@ -1103,11 +1123,13 @@ function resetTorrentFilters() {
   const qualityFilter = document.getElementById('quality-filter');
   const yearFilter = document.getElementById('year-filter');
   const episodeTypeFilter = document.getElementById('episode-type-filter');
+  const providerFilter = document.getElementById('provider-filter');
   const selectAllCompleteBtn = document.getElementById('select-all-complete-btn');
 
   if (qualityFilter) qualityFilter.value = '';
   if (yearFilter) yearFilter.value = '';
   if (episodeTypeFilter) episodeTypeFilter.value = 'all';
+  if (providerFilter) providerFilter.value = '';
 
   // Hide the select all complete button
   if (selectAllCompleteBtn) {
@@ -1154,9 +1176,13 @@ function updateSelectedTorrents() {
   const checkboxes = document.querySelectorAll('.torrent-checkbox:checked');
 
   checkboxes.forEach(checkbox => {
+    const torrentRow = checkbox.closest('tr');
+    const provider = torrentRow ? torrentRow.getAttribute('data-provider') : null;
+
     selectedTorrents.push({
       hash: checkbox.getAttribute('data-hash'),
-      name: checkbox.getAttribute('data-name')
+      name: checkbox.getAttribute('data-name'),
+      provider_id: provider
     });
   });
 
@@ -1293,7 +1319,7 @@ function createMediaDetailsModal() {
 }
 
 // Download torrent
-async function downloadTorrent(hash, name) {
+async function downloadTorrent(hash, name, provider_id) {
   // Show download modal
   const modal = document.getElementById('download-modal');
   const modalNameEl = document.getElementById('download-name');
@@ -1307,6 +1333,11 @@ async function downloadTorrent(hash, name) {
     // Set data attributes for form submission
     downloadForm.setAttribute('data-hash', hash);
     downloadForm.setAttribute('data-name', name);
+    if (provider_id) {
+      downloadForm.setAttribute('data-provider-id', provider_id);
+    } else {
+      downloadForm.removeAttribute('data-provider-id');
+    }
 
     // Clear any previous torrents data
     downloadForm.removeAttribute('data-torrents');
@@ -1384,7 +1415,8 @@ async function submitDownload(path) {
             body: JSON.stringify({
               hash: torrent.hash,
               name: torrent.name,
-              path: path
+              path: path,
+              provider_id: torrent.provider_id
             })
           });
 
@@ -1435,6 +1467,7 @@ async function submitDownload(path) {
     }
 
     try {
+      const provider_id = downloadForm.getAttribute('data-provider-id');
       const response = await fetch('/api/download', {
         method: 'POST',
         headers: {
@@ -1443,7 +1476,8 @@ async function submitDownload(path) {
         body: JSON.stringify({
           hash: hash,
           name: name,
-          path: path
+          path: path,
+          provider_id: provider_id
         })
       });
 

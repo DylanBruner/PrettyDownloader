@@ -8,6 +8,7 @@ from flask_session import Session
 from dotenv import load_dotenv
 from libs.providers.provider_manager import ProviderManager
 from libs.providers.piratebay_provider import PirateBayProvider
+from libs.providers.sample_provider import SampleProvider
 from libs.tmdbclient import TMDBClient
 from qbittorrent import Client
 import libs.users as users
@@ -63,6 +64,27 @@ provider_manager = ProviderManager()
 # Register providers
 piratebay_provider = PirateBayProvider()
 provider_manager.register_provider("piratebay", piratebay_provider)
+
+# Register sample provider (disabled by default)
+sample_provider = SampleProvider()
+provider_manager.register_provider("sample", sample_provider)
+
+# Load provider settings from settings database
+try:
+    provider_settings = settings.get_effective_settings().get("providers", {})
+    print(f"[INFO] Loaded provider settings: {provider_settings}")
+
+    # Apply settings to providers
+    for provider_id, provider_config in provider_settings.items():
+        provider = provider_manager.get_provider(provider_id)
+        if provider:
+            if "enabled" in provider_config:
+                provider.enabled = provider_config["enabled"]
+                print(f"[INFO] Set provider {provider_id} enabled status to {provider.enabled}")
+        else:
+            print(f"[WARNING] Provider {provider_id} not found but has settings")
+except Exception as e:
+    print(f"[ERROR] Failed to load provider settings: {e}")
 
 # Initialize TMDB client
 tmdb = TMDBClient()
@@ -346,11 +368,25 @@ def route_api_download():
     name = request.json.get("name")
     infohash = request.json.get("hash")
     downloadpath = request.json.get("path")
-    provider_id = request.json.get("provider_id", "piratebay")  # Default to piratebay if not specified
+    provider_id = request.json.get("provider_id")
 
-    magnet = provider_manager.create_magnet_link(infohash, name, provider_id)
-    if not magnet:
-        return jsonify({"success": False, "message": f"Provider {provider_id} not found or disabled"}), 400
+    # If provider_id is not specified, try to find a provider that can handle this infohash
+    if not provider_id:
+        # Try each enabled provider until one works
+        for pid, provider in provider_manager.get_enabled_providers().items():
+            magnet = provider.create_magnet_link(infohash, name)
+            if magnet:
+                provider_id = pid
+                print(f"[INFO] Using provider {provider_id} for magnet link generation")
+                break
+
+        if not provider_id:
+            return jsonify({"success": False, "message": "No enabled provider could create a magnet link"}), 400
+    else:
+        # Use the specified provider
+        magnet = provider_manager.create_magnet_link(infohash, name, provider_id)
+        if not magnet:
+            return jsonify({"success": False, "message": f"Provider {provider_id} not found or disabled"}), 400
 
     print(f"[INFO] Created magnet link: {magnet} for {name} ({infohash}) using provider {provider_id}")
 
@@ -390,9 +426,9 @@ def route_api_search():
     query = request.args.get("q")
     search_type = request.args.get("type", "tmdb")
     media_type = request.args.get("media_type", "all")
-    provider_id = request.args.get("provider_id", "piratebay")  # Default to piratebay if not specified
+    provider_id = request.args.get("provider_id")  # If not specified, search all providers
 
-    print(f"[INFO] Searching for {query} using {search_type}, media_type: {media_type}, provider: {provider_id}")
+    print(f"[INFO] Searching for {query} using {search_type}, media_type: {media_type}, provider: {provider_id if provider_id else 'all enabled providers'}")
 
     if search_type == "tmdb":
         # Search TMDB first with media type filter
@@ -450,12 +486,12 @@ def route_api_tmdb_details():
 def route_api_torrents():
     query = request.args.get("q")
     category = request.args.get("category", 0, type=int)
-    provider_id = request.args.get("provider_id", "piratebay")  # Default to piratebay if not specified
+    provider_id = request.args.get("provider_id")  # If not specified, search all providers
 
     if not query:
         return jsonify({"success": False, "message": "Query is required"}), 400
 
-    print(f"[INFO] Searching for {query} with category {category} using provider {provider_id}")
+    print(f"[INFO] Searching for {query} with category {category} using provider {provider_id if provider_id else 'all enabled providers'}")
     search_results = provider_manager.search(query, category, provider_id=provider_id)
     return jsonify(search_results)
 
@@ -611,6 +647,19 @@ def route_api_providers_toggle(provider_id):
         # Toggle enabled status
         provider.enabled = not provider.enabled
         print(f"[INFO] Provider {provider_id} ({provider.name}) is now {'enabled' if provider.enabled else 'disabled'}")
+
+        # Save provider settings to settings database
+        current_settings = settings.get_overridden_settings()
+        if "providers" not in current_settings:
+            current_settings["providers"] = {}
+
+        # Update provider enabled status
+        current_settings["providers"][provider_id] = {
+            "enabled": provider.enabled
+        }
+
+        # Save settings
+        settings.save_settings(current_settings)
 
         return jsonify({
             "success": True,

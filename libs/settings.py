@@ -40,7 +40,10 @@ def get_settings_from_env():
         "auto-prompt-passkeys": os.environ.get("auto-prompt-passkeys", "true").lower() == "true",
 
         # Content filtering settings
-        "hide-adult-content": os.environ.get("hide-adult-content", "true").lower() == "true"
+        "hide-adult-content": os.environ.get("hide-adult-content", "true").lower() == "true",
+
+        # Provider settings
+        "providers": {}
     }
 
     return env_settings

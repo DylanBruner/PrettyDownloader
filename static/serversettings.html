@@ -20,6 +20,65 @@
   <!-- Custom CSS -->
   <link href="/static/css/style.css" rel="stylesheet">
 
+  <style>
+    /* Toggle Switch Styles */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 24px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+    }
+
+    input:checked + .slider {
+      background-color: #e53e3e;
+    }
+
+    input:focus + .slider {
+      box-shadow: 0 0 1px #e53e3e;
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+
+    /* Rounded sliders */
+    .slider.round {
+      border-radius: 24px;
+    }
+
+    .slider.round:before {
+      border-radius: 50%;
+    }
+  </style>
+
   <!-- Alpine.js -->
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.10.3/dist/cdn.min.js" defer></script>
 </head>
@@ -145,6 +204,20 @@
             </div>
           </div>
 
+          <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Torrent Providers</h3>
+            <p class="text-sm text-gray-400 mb-4">
+              Enable or disable torrent providers used for searching.
+            </p>
+
+            <div id="providers-container" class="grid grid-cols-1 gap-4">
+              <div class="text-center py-4">
+                <div class="loader mx-auto"></div>
+                <p class="mt-2 text-gray-400">Loading providers...</p>
+              </div>
+            </div>
+          </div>
+
           <div class="flex justify-end">
             <button type="submit" class="btn btn-primary">
               <i class="fas fa-save mr-2"></i> Save Changes
@@ -248,12 +321,106 @@
 
           // Display current config
           displayCurrentConfig(data.settings, data.overridden);
+
+          // Fetch and display providers
+          fetchProviders();
         } else {
           showToast(data.message || 'Failed to fetch settings', 'error');
         }
       } catch (error) {
         console.error('Error fetching settings:', error);
         showToast('Error fetching settings', 'error');
+      }
+    }
+
+    // Fetch providers
+    async function fetchProviders() {
+      try {
+        const response = await fetch('/api/providers');
+        const data = await response.json();
+
+        if (data.success) {
+          displayProviders(data.providers);
+        } else {
+          showToast(data.message || 'Failed to fetch providers', 'error');
+        }
+      } catch (error) {
+        console.error('Error fetching providers:', error);
+        showToast('Error fetching providers', 'error');
+      }
+    }
+
+    // Display providers
+    function displayProviders(providers) {
+      const providersContainer = document.getElementById('providers-container');
+
+      if (providersContainer) {
+        // Clear loading indicator
+        providersContainer.innerHTML = '';
+
+        if (providers.length === 0) {
+          providersContainer.innerHTML = '<p class="text-center py-4 text-gray-400">No providers available</p>';
+          return;
+        }
+
+        // Create a card for each provider
+        providers.forEach(provider => {
+          const providerCard = document.createElement('div');
+          providerCard.className = 'card p-4 flex justify-between items-center';
+          providerCard.innerHTML = `
+            <div>
+              <h4 class="font-semibold">${provider.name}</h4>
+              <p class="text-xs text-gray-400">Provider ID: ${provider.id}</p>
+            </div>
+            <div>
+              <label class="switch">
+                <input type="checkbox" id="provider-${provider.id}" ${provider.enabled ? 'checked' : ''}>
+                <span class="slider round"></span>
+              </label>
+            </div>
+          `;
+
+          providersContainer.appendChild(providerCard);
+
+          // Add event listener to toggle switch
+          const toggleSwitch = document.getElementById(`provider-${provider.id}`);
+          if (toggleSwitch) {
+            toggleSwitch.addEventListener('change', () => toggleProvider(provider.id, toggleSwitch.checked));
+          }
+        });
+      }
+    }
+
+    // Toggle provider enabled status
+    async function toggleProvider(providerId, enabled) {
+      try {
+        const response = await fetch(`/api/providers/${providerId}/toggle`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          showToast(`Provider ${data.provider.name} ${data.provider.enabled ? 'enabled' : 'disabled'}`, 'success');
+        } else {
+          showToast(data.message || 'Failed to toggle provider', 'error');
+          // Revert the toggle if there was an error
+          const toggleSwitch = document.getElementById(`provider-${providerId}`);
+          if (toggleSwitch) {
+            toggleSwitch.checked = !enabled;
+          }
+        }
+      } catch (error) {
+        console.error('Error toggling provider:', error);
+        showToast('Error toggling provider', 'error');
+        // Revert the toggle if there was an error
+        const toggleSwitch = document.getElementById(`provider-${providerId}`);
+        if (toggleSwitch) {
+          toggleSwitch.checked = !enabled;
+        }
       }
     }
 
