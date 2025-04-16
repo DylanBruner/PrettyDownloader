@@ -373,9 +373,9 @@ function displayDirectSearchResults(results, skipFilterUpdate = false) {
               >
             </div>
             <div class="flex-1">
-              <h3 class="text-base font-semibold mb-2">${highlightedName}</h3>
+              <h3 class="text-base font-semibold mb-2 mobile-result-title">${highlightedName}</h3>
 
-              <div class="flex flex-wrap gap-1 mb-2">
+              <div class="flex flex-wrap gap-1 mb-2 w-full">
                 ${result.provider ?
                   `<span class="tag tag-provider ${directSearchFilters.liveSearch && result.provider.toLowerCase().includes(directSearchFilters.liveSearch.toLowerCase()) ? 'highlight-tag' : ''}">
                     ${result.provider}
@@ -407,15 +407,15 @@ function displayDirectSearchResults(results, skipFilterUpdate = false) {
                 }
               </div>
 
-              <div class="text-sm text-gray-400 mb-2">
-                <span class="mr-3"><i class="fas fa-folder"></i> ${result.category}</span>
-                <span><i class="fas fa-calendar"></i> ${formatDate(result.added)}</span>
+              <div class="flex flex-wrap text-sm text-gray-400 mb-2">
+                <span class="mr-3 truncate"><i class="fas fa-folder"></i> ${result.category}</span>
+                <span class="truncate"><i class="fas fa-calendar"></i> ${formatDate(result.added)}</span>
               </div>
 
-              <div class="flex justify-between text-sm mb-3">
-                <span><i class="fas fa-hdd"></i> ${formatFileSize(parseInt(result.size))}</span>
-                <span class="text-green-500"><i class="fas fa-arrow-up"></i> ${result.seeders}</span>
-                <span class="text-red-500"><i class="fas fa-arrow-down"></i> ${result.leechers}</span>
+              <div class="grid grid-cols-3 gap-1 text-sm mb-3">
+                <span class="truncate"><i class="fas fa-hdd"></i> ${formatFileSize(parseInt(result.size))}</span>
+                <span class="text-green-500 text-center"><i class="fas fa-arrow-up"></i> ${result.seeders}</span>
+                <span class="text-red-500 text-right"><i class="fas fa-arrow-down"></i> ${result.leechers}</span>
               </div>
 
               <div class="flex justify-end">
