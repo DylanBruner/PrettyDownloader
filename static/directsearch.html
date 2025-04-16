@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#e53e3e">
+  <title>PrettyDownloader - Direct Search</title>
+
+  <!-- Web App Manifest -->
+  <link rel="manifest" href="/static/manifest.json">
+
+  <!-- iOS PWA specific -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="PrettyDL">
+  <link rel="apple-touch-icon" href="/static/img/icon-192x192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" href="/static/img/favicon.png" type="image/png">
+
+  <!-- Tailwind CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Custom CSS -->
+  <link href="/static/css/style.css" rel="stylesheet">
+
+  <!-- Alpine.js -->
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.10.3/dist/cdn.min.js" defer></script>
+</head>
+<body class="flex flex-col min-h-screen">
+  <!-- The sidebar will be dynamically inserted by sidebar.js -->
+
+  <!-- Main content -->
+  <div class="flex-1 ml-0 md:ml-64 transition-all duration-300">
+    <!-- The topbar will be dynamically inserted by topbar.js -->
+
+    <!-- Page content -->
+    <main class="p-4 md:p-6">
+      <!-- Search form -->
+      <div class="card p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">Direct Search</h2>
+        <p class="text-gray-400 mb-4">Search directly from The Pirate Bay without using TMDB. All results will be displayed with metadata tags.</p>
+
+        <form id="direct-search-form" class="flex flex-col gap-4">
+          <div class="flex flex-col md:flex-row gap-4">
+            <div class="flex-1">
+              <input
+                type="text"
+                id="direct-search-input"
+                class="form-input w-full"
+                placeholder="Search for movies, TV shows, music, games, software..."
+                required
+              >
+            </div>
+            <button type="submit" class="btn btn-primary flex items-center justify-center">
+              <i class="fas fa-search mr-2"></i> Search
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-2">
+            <!-- Content Type Filter -->
+            <div>
+              <label for="content-type-filter" class="block text-sm font-medium mb-2">Content Type</label>
+              <select id="content-type-filter" class="form-input w-full">
+                <option value="all">All Content</option>
+                <option value="movie">Movies</option>
+                <option value="tvshow">TV Shows</option>
+              </select>
+            </div>
+
+            <!-- Episode Type Filter (for TV shows) -->
+            <div>
+              <label for="episode-type-filter" class="block text-sm font-medium mb-2">Episode Type</label>
+              <select id="episode-type-filter" class="form-input w-full">
+                <option value="all">All Episodes</option>
+                <option value="single">Single Episodes</option>
+                <option value="complete">Complete Seasons</option>
+              </select>
+            </div>
+
+            <!-- Year Filter -->
+            <div>
+              <label for="year-filter" class="block text-sm font-medium mb-2">Year</label>
+              <select id="year-filter" class="form-input w-full">
+                <option value="">Any Year</option>
+                <!-- Years will be populated dynamically -->
+              </select>
+            </div>
+
+            <!-- Quality Filter -->
+            <div>
+              <label for="quality-filter" class="block text-sm font-medium mb-2">Quality</label>
+              <select id="quality-filter" class="form-input w-full">
+                <option value="">Any Quality</option>
+                <!-- Quality options will be populated dynamically -->
+              </select>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Search results -->
+      <div id="direct-search-results-container" class="mt-6">
+        <!-- Live search filter (initially hidden) -->
+        <div id="live-search-container" class="mb-4 hidden">
+          <div class="flex flex-col">
+            <div class="flex items-center bg-gray-800 rounded-md p-2">
+              <i class="fas fa-filter text-gray-400 mr-2"></i>
+              <input
+                type="text"
+                id="live-search-input"
+                class="form-input bg-transparent border-0 flex-1 focus:ring-0 focus:outline-none"
+                placeholder="Filter results by name or tags (quality, year, season, etc.)..."
+              >
+              <button id="clear-live-search" class="text-gray-400 hover:text-white p-1 hidden">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div class="flex justify-between text-xs text-gray-400 mt-1 ml-2">
+              <div>
+                <i class="fas fa-info-circle mr-1"></i> Search in names and metadata tags (quality, year, season, etc.)
+              </div>
+              <div class="mr-2">
+                <span class="keyboard-shortcut">Ctrl+F</span> to focus
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Results display -->
+        <div id="direct-search-results">
+          <div class="text-center p-8 text-gray-400">
+            <i class="fas fa-search text-5xl mb-4"></i>
+            <p>Search for content to download</p>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 p-4 text-center text-gray-400 text-sm">
+      <p></p>
+    </footer>
+  </div>
+
+  <!-- Download Modal -->
+  <div id="download-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
+    <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+    <div class="card p-6 max-w-md w-full z-10">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold">Download Torrent</h3>
+        <button onclick="document.getElementById('download-modal').classList.add('hidden')" class="text-gray-400 hover:text-white">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <p class="mb-2">You are about to download:</p>
+      <div id="download-name" class="mb-4 break-words"></div>
+
+      <form id="download-form" class="mt-4">
+        <div class="mb-4">
+          <label for="download-path" class="block text-sm font-medium mb-2">Save to:</label>
+          <select id="download-path" class="form-input w-full">
+            <option value="/media/movies">/media/movies</option>
+            <option value="/media/shows">/media/shows</option>
+          </select>
+        </div>
+
+        <div class="flex justify-end gap-2 mt-6">
+          <button
+            type="button"
+            onclick="document.getElementById('download-modal').classList.add('hidden')"
+            class="btn bg-gray-600 text-white hover:bg-gray-700"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onclick="submitDownload(document.getElementById('download-path').value)"
+            class="btn btn-primary"
+          >
+            <i class="fas fa-download mr-1"></i> Download
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Custom JavaScript -->
+  <script src="/static/js/sidebar.js"></script>
+  <script src="/static/js/topbar.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script src="/static/js/directsearch.js"></script>
+
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/static/sw.js')
+          .then(registration => {
+            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+          })
+          .catch(error => {
+            console.log('ServiceWorker registration failed: ', error);
+          });
+      });
+    }
+  </script>
+</body>
+</html>

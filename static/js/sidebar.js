@@ -92,6 +92,12 @@ function createSidebar(isAdmin, currentPath) {
             </a>
           </li>
           <li>
+            <a href="/directsearch" class="sidebar-link flex items-center p-2 rounded-md hover:bg-gray-800 ${currentPath === '/directsearch' ? 'active bg-gray-800' : ''}">
+              <i class="fas fa-bolt w-6"></i>
+              <span>Direct Search</span>
+            </a>
+          </li>
+          <li>
             <a href="/downloads" class="sidebar-link flex items-center p-2 rounded-md hover:bg-gray-800 ${currentPath === '/downloads' ? 'active bg-gray-800' : ''}">
               <i class="fas fa-download w-6"></i>
               <span>Downloads</span>

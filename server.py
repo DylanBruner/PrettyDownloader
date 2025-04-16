@@ -187,6 +187,12 @@ def route_passkeys():
     # Redirect to the new settings page
     return redirect("/settings")
 
+@app.route("/directsearch")
+@auth_required
+def route_directsearch():
+    with open("static/directsearch.html", "r") as f:
+        return f.read()
+
 @app.route("/static/<path:path>")
 def route_static(path):
     return app.send_static_file(path)
@@ -430,12 +436,13 @@ def route_api_tmdb_details():
 @auth_required
 def route_api_torrents():
     query = request.args.get("q")
+    category = request.args.get("category", 0, type=int)
 
     if not query:
         return jsonify({"success": False, "message": "Query is required"}), 400
 
-    print(f"[INFO] Searching TPB for {query}")
-    search_results = tconn.search(query)
+    print(f"[INFO] Searching TPB for {query} with category {category}")
+    search_results = tconn.search(query, category)
     return jsonify(search_results)
 
 @app.route('/api/fetch', methods=["GET"])

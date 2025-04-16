@@ -333,23 +333,26 @@ function ensureModalScrollable() {
   const modal = document.getElementById('media-details-modal');
   const modalCard = modal.querySelector('.card');
   const modalContent = document.getElementById('media-details-content');
+  const modalHeader = modalCard ? modalCard.querySelector('.sticky') : null;
 
-  if (modal && modalCard) {
+  if (modal && modalCard && modalContent && modalHeader) {
     // Add touch event listeners to ensure scrolling works on mobile
     modalCard.addEventListener('touchmove', function(e) {
       e.stopPropagation();
     }, { passive: true });
 
-    if (modalContent) {
-      modalContent.addEventListener('touchmove', function(e) {
-        e.stopPropagation();
-      }, { passive: true });
-    }
+    modalContent.addEventListener('touchmove', function(e) {
+      e.stopPropagation();
+    }, { passive: true });
 
     // For iOS Safari, we need to ensure the modal doesn't exceed viewport height
     const viewportHeight = window.innerHeight;
-    const modalHeight = modalCard.offsetHeight;
+    const headerHeight = modalHeader.offsetHeight;
     const isMobile = window.innerWidth < 640;
+
+    // Make sure the header has the right background and shadow
+    modalHeader.style.backgroundColor = 'var(--card-bg)';
+    modalHeader.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
 
     if (isMobile) {
       // On mobile, make the modal take up more of the screen
@@ -357,16 +360,20 @@ function ensureModalScrollable() {
       modalCard.style.height = (viewportHeight * 0.9) + 'px';
 
       // Ensure the content area gets the remaining height after the header
-      const headerHeight = modalCard.querySelector('.sticky').offsetHeight;
-      if (modalContent && headerHeight) {
-        modalContent.style.maxHeight = `calc(${viewportHeight * 0.9}px - ${headerHeight}px - 2rem)`;
-        modalContent.style.overflowY = 'auto';
-      }
+      modalContent.style.height = `calc(${viewportHeight * 0.9}px - ${headerHeight}px)`;
+      modalContent.style.maxHeight = `calc(${viewportHeight * 0.9}px - ${headerHeight}px)`;
+      modalContent.style.overflowY = 'auto';
 
       console.log('Adjusted modal for mobile:', modalCard.style.maxHeight);
-    } else if (modalHeight > viewportHeight * 0.9) {
-      // On desktop, just cap the height if needed
+    } else {
+      // On desktop, set a good height that works for most screens
       modalCard.style.maxHeight = (viewportHeight * 0.85) + 'px';
+      modalCard.style.height = (viewportHeight * 0.85) + 'px';
+
+      // Ensure the content area gets the remaining height after the header
+      modalContent.style.height = `calc(${viewportHeight * 0.85}px - ${headerHeight}px)`;
+      modalContent.style.maxHeight = `calc(${viewportHeight * 0.85}px - ${headerHeight}px)`;
+      modalContent.style.overflowY = 'auto';
     }
   }
 }
@@ -1267,8 +1274,8 @@ function createMediaDetailsModal() {
 
   modal.innerHTML = `
     <div class="absolute inset-0 bg-black bg-opacity-80"></div>
-    <div class="card p-4 sm:p-5 w-[95%] max-w-lg sm:max-w-2xl md:max-w-3xl z-10 overflow-hidden">
-      <div class="flex justify-between items-center mb-3 sm:mb-4 sticky top-0 bg-gray-800 z-10 pb-2 border-b border-gray-700">
+    <div class="card p-0 w-[95%] max-w-lg sm:max-w-2xl md:max-w-3xl z-10 flex flex-col overflow-hidden">
+      <div class="flex justify-between items-center p-4 sm:p-5 sticky top-0 bg-gray-800 z-20 border-b border-gray-700">
         <h3 id="media-details-title" class="text-base sm:text-xl font-semibold truncate pr-2">Media Details</h3>
         <button
           onclick="document.getElementById('media-details-modal').classList.add('hidden')"
@@ -1278,7 +1285,7 @@ function createMediaDetailsModal() {
           <i class="fas fa-times text-lg"></i>
         </button>
       </div>
-      <div id="media-details-content" class="media-details-content overflow-y-auto"></div>
+      <div id="media-details-content" class="media-details-content p-4 sm:p-5 overflow-y-auto flex-1"></div>
     </div>
   `;
 
@@ -2037,3 +2044,7 @@ window.updateSelectedTorrents = updateSelectedTorrents;
 window.downloadSelectedTorrents = downloadSelectedTorrents;
 window.downloadTorrent = downloadTorrent;
 window.showMediaDetails = showMediaDetails;
+window.extractMetadata = extractMetadata;
+window.formatFileSize = formatFileSize;
+window.formatDate = formatDate;
+window.determineContentType = determineContentType;
