@@ -215,6 +215,22 @@
           </div>
 
           <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Data Storage</h3>
+            <p class="text-sm text-gray-400 mb-4">
+              Configure where database files are stored. <strong>Note:</strong> Changing this setting does not move existing data files.
+              You will need to manually move your data files if you change this setting.
+            </p>
+
+            <div class="grid grid-cols-1 gap-6">
+              <div>
+                <label for="DATA_DIR" class="block text-sm font-medium mb-2">Data Directory</label>
+                <input type="text" id="DATA_DIR" name="DATA_DIR" class="form-input w-full" placeholder="data">
+                <p class="text-xs text-gray-400 mt-1">Directory where all JSON database files are stored (relative to application root or absolute path)</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-6">
             <h3 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Content Filtering</h3>
             <p class="text-sm text-gray-400 mb-4">
               These settings control what content is filtered from search results.
@@ -379,6 +395,9 @@
           // Content filtering settings
           document.getElementById('hide-adult-content').checked = data.settings['hide-adult-content'] !== false; // Default to true
 
+          // Data directory settings
+          document.getElementById('DATA_DIR').value = data.settings['DATA_DIR'] || 'data';
+
           // Default user quotas
           document.getElementById('default-daily-quota').value = data.settings['default-daily-quota'] || 0;
           document.getElementById('default-weekly-quota').value = data.settings['default-weekly-quota'] || 0;
@@ -514,6 +533,9 @@
 
         // Content filtering settings
         'hide-adult-content': document.getElementById('hide-adult-content').checked,
+
+        // Data directory settings
+        'DATA_DIR': document.getElementById('DATA_DIR').value || 'data',
 
         // Default user quotas
         'default-daily-quota': parseInt(document.getElementById('default-daily-quota').value) || 0,

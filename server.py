@@ -1195,6 +1195,17 @@ def route_api_settings_update():
                 tokens.get_token_settings()
                 print(f"[INFO] Token settings refreshed")
 
+            # Handle DATA_DIR changes
+            if 'DATA_DIR' in new_settings:
+                # The DATA_DIR environment variable has been updated by apply_settings_to_env()
+                # We need to update the config.DATA_DIR variable and reinitialize the data directory
+                config.DATA_DIR = os.environ.get('DATA_DIR', 'data')
+                config.ensure_data_dir()
+                print(f"[INFO] Data directory updated to {config.DATA_DIR}")
+
+                # Note: This doesn't move existing data files to the new location
+                # Users will need to manually move their data files if they change this setting
+
         return jsonify({
             "success": success,
             "message": "Settings updated successfully" if success else "Failed to update settings"

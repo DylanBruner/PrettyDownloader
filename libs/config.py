@@ -3,6 +3,7 @@ import json
 
 # Global data directory for all JSON database files
 # Default to 'data' directory in the current working directory
+# This will be updated by settings.apply_settings_to_env() if DATA_DIR is set in settings
 DATA_DIR = os.environ.get('DATA_DIR', 'data')
 
 # Ensure the data directory exists
@@ -17,11 +18,11 @@ def ensure_data_dir():
 def get_db_path(filename, env_var=None):
     """
     Get the full path for a database file
-    
+
     Args:
         filename (str): The filename for the database
         env_var (str, optional): Environment variable name to override the path
-        
+
     Returns:
         str: The full path to the database file
     """
@@ -29,13 +30,13 @@ def get_db_path(filename, env_var=None):
     if env_var and os.environ.get(env_var):
         path = os.environ.get(env_var)
         print(f"[INFO] Using path from environment variable {env_var}: {path}")
-        
+
         # Ensure directory exists if path contains directories
         if os.path.dirname(path):
             os.makedirs(os.path.dirname(path), exist_ok=True)
-            
+
         return path
-    
+
     # Otherwise, use the data directory
     ensure_data_dir()
     return os.path.join(DATA_DIR, filename)
