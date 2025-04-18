@@ -179,8 +179,8 @@ async function checkAuthStatus() {
         });
       }
     } else {
-      // Redirect to login if not authenticated and not already on login page
-      if (!window.location.pathname.includes('/login')) {
+      // Redirect to login if not authenticated and not on login or register page
+      if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
         window.location.href = '/login';
       }
     }
@@ -188,9 +188,9 @@ async function checkAuthStatus() {
     console.error('Error checking auth status:', error);
     showToast('Error checking authentication status', 'error');
 
-    // On error, clear tokens and redirect to login if not already there
+    // On error, clear tokens and redirect to login if not on login or register page
     clearAuthTokens();
-    if (!window.location.pathname.includes('/login')) {
+    if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
       window.location.href = '/login';
     }
   }
@@ -537,6 +537,12 @@ function initPageFunctionality() {
   if (currentPath === '/login') {
     console.log('Initializing login page');
     initLoginPage();
+  }
+
+  // Initialize register page
+  if (currentPath === '/register') {
+    console.log('Initializing register page');
+    // Register page has its own initialization in the HTML file
   }
 
   // Initialize passkeys page

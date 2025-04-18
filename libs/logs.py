@@ -197,6 +197,62 @@ def log_user_deleted(admin_username, deleted_username):
     }
     return add_log('user_deleted', admin_username, details)
 
+def log_user_suspended(admin_username, suspended_username):
+    """Log user suspension
+
+    Args:
+        admin_username (str): Username of the admin who suspended the user
+        suspended_username (str): Username of the suspended user
+    """
+    details = {
+        'suspended_username': suspended_username
+    }
+    return add_log('user_suspended', admin_username, details)
+
+def log_user_unsuspended(admin_username, unsuspended_username):
+    """Log user unsuspension
+
+    Args:
+        admin_username (str): Username of the admin who unsuspended the user
+        unsuspended_username (str): Username of the unsuspended user
+    """
+    details = {
+        'unsuspended_username': unsuspended_username
+    }
+    return add_log('user_unsuspended', admin_username, details)
+
+def log_user_registered(username):
+    """Log user self-registration
+
+    Args:
+        username (str): Username of the registered user
+    """
+    return add_log('user_registered', username)
+
+def log_user_approved(admin_username, approved_username):
+    """Log user approval
+
+    Args:
+        admin_username (str): Username of the admin who approved the user
+        approved_username (str): Username of the approved user
+    """
+    details = {
+        'approved_username': approved_username
+    }
+    return add_log('user_approved', admin_username, details)
+
+def log_user_rejected(admin_username, rejected_username):
+    """Log user rejection
+
+    Args:
+        admin_username (str): Username of the admin who rejected the user
+        rejected_username (str): Username of the rejected user
+    """
+    details = {
+        'rejected_username': rejected_username
+    }
+    return add_log('user_rejected', admin_username, details)
+
 def log_event(username, event_type, message):
     """Log a generic event
 

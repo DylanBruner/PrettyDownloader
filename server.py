@@ -262,6 +262,14 @@ def route_api_login():
     if not username or not password:
         return jsonify({"success": False, "message": "Username and password are required"})
 
+    # Check if user exists and get status
+    is_valid, status_message = users.check_user_status(username)
+    if not is_valid:
+        # User exists but is suspended or pending approval
+        if status_message:
+            logs.log_login_attempt(username, False)
+            return jsonify({"success": False, "message": status_message})
+
     if users.verify_user(username, password):
         # Generate tokens and login user
         auth_data = users.login_user(username, remember_me)
@@ -1355,6 +1363,100 @@ def route_api_passkeys_delete(credential_id):
     except Exception as e:
         print(f"[ERROR] Failed to delete passkey: {str(e)}")
         return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
+
+# User suspension API routes
+@app.route("/api/users/<username>/suspend", methods=["POST"])
+@auth_required
+@admin_required
+def route_api_users_suspend(username):
+    success, message = users.suspend_user(username)
+
+    # Log user suspension if successful
+    if success:
+        admin_username = users.get_current_user()
+        logs.log_user_suspended(admin_username, username)
+
+    return jsonify({"success": success, "message": message})
+
+@app.route("/api/users/<username>/unsuspend", methods=["POST"])
+@auth_required
+@admin_required
+def route_api_users_unsuspend(username):
+    success, message = users.unsuspend_user(username)
+
+    # Log user unsuspension if successful
+    if success:
+        admin_username = users.get_current_user()
+        logs.log_user_unsuspended(admin_username, username)
+
+    return jsonify({"success": success, "message": message})
+
+# User registration and approval API routes
+@app.route("/register")
+def route_register():
+    # If already logged in, redirect to home
+    if users.is_authenticated():
+        return redirect("/")
+
+    with open("static/register.html", "r") as f:
+        return f.read()
+
+@app.route("/api/register", methods=["POST"])
+def route_api_register():
+    username = request.json.get("username")
+    password = request.json.get("password")
+
+    if not username or not password:
+        return jsonify({"success": False, "message": "Username and password are required"})
+
+    # Get default quota settings
+    daily_quota = settings.get_effective_settings().get("default-daily-quota", 0)
+    weekly_quota = settings.get_effective_settings().get("default-weekly-quota", 0)
+    monthly_quota = settings.get_effective_settings().get("default-monthly-quota", 0)
+
+    # Create user with pending approval
+    success, message = users.create_user(
+        username,
+        password,
+        is_admin=False,
+        daily_quota=daily_quota,
+        weekly_quota=weekly_quota,
+        monthly_quota=monthly_quota,
+        pending_approval=True
+    )
+
+    # Log user registration if successful
+    if success:
+        logs.log_user_registered(username)
+        message = "Registration successful. Your account is pending approval by an administrator."
+
+    return jsonify({"success": success, "message": message})
+
+@app.route("/api/users/<username>/approve", methods=["POST"])
+@auth_required
+@admin_required
+def route_api_users_approve(username):
+    success, message = users.approve_user(username)
+
+    # Log user approval if successful
+    if success:
+        admin_username = users.get_current_user()
+        logs.log_user_approved(admin_username, username)
+
+    return jsonify({"success": success, "message": message})
+
+@app.route("/api/users/<username>/reject", methods=["POST"])
+@auth_required
+@admin_required
+def route_api_users_reject(username):
+    success, message = users.reject_user(username)
+
+    # Log user rejection if successful
+    if success:
+        admin_username = users.get_current_user()
+        logs.log_user_rejected(admin_username, username)
+
+    return jsonify({"success": success, "message": message})
 
 # Start the application
 app.run("0.0.0.0", port=80, debug=True)

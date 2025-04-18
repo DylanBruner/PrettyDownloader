@@ -6,8 +6,8 @@ function initSidebar() {
   // Get the current path to highlight the active link
   const currentPath = window.location.pathname;
 
-  // Don't show sidebar on login page
-  if (currentPath === '/login') {
+  // Don't show sidebar on login or register pages
+  if (currentPath === '/login' || currentPath === '/register') {
     return;
   }
 

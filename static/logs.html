@@ -49,6 +49,11 @@
                   <option value="quota_exceeded">Quota Exceeded</option>
                   <option value="user_created">User Created</option>
                   <option value="user_deleted">User Deleted</option>
+                  <option value="user_suspended">User Suspended</option>
+                  <option value="user_unsuspended">User Unsuspended</option>
+                  <option value="user_registered">User Registered</option>
+                  <option value="user_approved">User Approved</option>
+                  <option value="user_rejected">User Rejected</option>
                 </select>
               </div>
 
@@ -256,6 +261,26 @@
             logTypeDisplay = '<i class="fas fa-user-minus mr-1"></i> User Deleted';
             logTypeClass = 'text-yellow-500';
             break;
+          case 'user_suspended':
+            logTypeDisplay = '<i class="fas fa-user-slash mr-1"></i> User Suspended';
+            logTypeClass = 'text-orange-500';
+            break;
+          case 'user_unsuspended':
+            logTypeDisplay = '<i class="fas fa-user-check mr-1"></i> User Unsuspended';
+            logTypeClass = 'text-green-500';
+            break;
+          case 'user_registered':
+            logTypeDisplay = '<i class="fas fa-user-plus mr-1"></i> User Registered';
+            logTypeClass = 'text-blue-500';
+            break;
+          case 'user_approved':
+            logTypeDisplay = '<i class="fas fa-check-circle mr-1"></i> User Approved';
+            logTypeClass = 'text-green-500';
+            break;
+          case 'user_rejected':
+            logTypeDisplay = '<i class="fas fa-times-circle mr-1"></i> User Rejected';
+            logTypeClass = 'text-red-500';
+            break;
           default:
             logTypeDisplay = log.type;
         }
@@ -281,6 +306,16 @@
           `;
         } else if (log.type === 'user_deleted' && log.details) {
           detailsHtml = `<div><strong>Deleted User:</strong> ${log.details.deleted_username || 'N/A'}</div>`;
+        } else if (log.type === 'user_suspended' && log.details) {
+          detailsHtml = `<div><strong>Suspended User:</strong> ${log.details.suspended_username || 'N/A'}</div>`;
+        } else if (log.type === 'user_unsuspended' && log.details) {
+          detailsHtml = `<div><strong>Unsuspended User:</strong> ${log.details.unsuspended_username || 'N/A'}</div>`;
+        } else if (log.type === 'user_registered') {
+          detailsHtml = `<div><strong>Self-Registration</strong></div>`;
+        } else if (log.type === 'user_approved' && log.details) {
+          detailsHtml = `<div><strong>Approved User:</strong> ${log.details.approved_username || 'N/A'}</div>`;
+        } else if (log.type === 'user_rejected' && log.details) {
+          detailsHtml = `<div><strong>Rejected User:</strong> ${log.details.rejected_username || 'N/A'}</div>`;
         } else if (log.type === 'quota_exceeded' && log.details) {
           detailsHtml = `
             <div><strong>Quota Type:</strong> ${log.details.quota_type.charAt(0).toUpperCase() + log.details.quota_type.slice(1)}</div>

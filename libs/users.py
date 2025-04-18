@@ -45,7 +45,7 @@ def save_users(users_data):
     with open(USERS_DB_PATH, 'w') as f:
         json.dump(users_data, f, indent=2)
 
-def create_user(username, password, is_admin=False, daily_quota=0, weekly_quota=0, monthly_quota=0):
+def create_user(username, password, is_admin=False, daily_quota=0, weekly_quota=0, monthly_quota=0, pending_approval=False):
     """Create a new user with hashed password and quotas"""
     users_data = get_users()
 
@@ -65,6 +65,8 @@ def create_user(username, password, is_admin=False, daily_quota=0, weekly_quota=
         'username': username,
         'password': hashed_password.decode('utf-8'),  # Store as string
         'is_admin': is_admin,
+        'suspended': False,  # New field for user suspension
+        'pending_approval': pending_approval,  # New field for registration approval
         'quotas': {
             'daily': {
                 'limit': daily_quota,
@@ -93,11 +95,37 @@ def verify_user(username, password):
 
     for user in users_data['users']:
         if user['username'] == username:
+            # Check if user is suspended
+            if user.get('suspended', False):
+                return False
+
+            # Check if user is pending approval
+            if user.get('pending_approval', False):
+                return False
+
             # Check password
             if bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
                 return True
 
     return False
+
+def check_user_status(username):
+    """Check if a user is suspended or pending approval
+
+    Returns:
+        tuple: (is_valid, message) where is_valid is a boolean and message is a string
+    """
+    users_data = get_users()
+
+    for user in users_data['users']:
+        if user['username'] == username:
+            if user.get('suspended', False):
+                return False, "Your account has been suspended. Please contact an administrator."
+            if user.get('pending_approval', False):
+                return False, "Your account is pending approval by an administrator."
+            return True, None
+
+    return False, "User not found."
 
 def is_authenticated():
     """Check if the current user is authenticated"""
@@ -200,6 +228,8 @@ def get_all_users():
         safe_user = {
             'username': user['username'],
             'is_admin': user.get('is_admin', False),
+            'suspended': user.get('suspended', False),
+            'pending_approval': user.get('pending_approval', False),
             'quotas': user.get('quotas', {
                 'daily': {'limit': 0, 'used': 0, 'reset_date': datetime.datetime.now().isoformat()},
                 'weekly': {'limit': 0, 'used': 0, 'reset_date': datetime.datetime.now().isoformat()},
@@ -270,6 +300,77 @@ def change_password(username, new_password):
             return True, "Password changed successfully"
 
     print(f"[ERROR] User {username} not found")
+    return False, "User not found"
+
+def suspend_user(username):
+    """Suspend a user account"""
+    print(f"[INFO] Suspending user: {username}")
+    users_data = get_users()
+
+    # Don't allow suspending the current user
+    if username == get_current_user():
+        return False, "Cannot suspend your own account"
+
+    for user in users_data['users']:
+        if user['username'] == username:
+            # Don't suspend the last admin
+            if user.get('is_admin', False) and sum(1 for u in users_data['users'] if u.get('is_admin', False)) <= 1:
+                return False, "Cannot suspend the last admin user"
+
+            # Set suspended status
+            user['suspended'] = True
+            save_users(users_data)
+            return True, f"User {username} has been suspended"
+
+    return False, "User not found"
+
+def unsuspend_user(username):
+    """Unsuspend a user account"""
+    print(f"[INFO] Unsuspending user: {username}")
+    users_data = get_users()
+
+    for user in users_data['users']:
+        if user['username'] == username:
+            # Set suspended status
+            user['suspended'] = False
+            save_users(users_data)
+            return True, f"User {username} has been unsuspended"
+
+    return False, "User not found"
+
+def approve_user(username):
+    """Approve a pending user registration"""
+    print(f"[INFO] Approving user registration: {username}")
+    users_data = get_users()
+
+    for user in users_data['users']:
+        if user['username'] == username:
+            if not user.get('pending_approval', False):
+                return False, "User is not pending approval"
+
+            # Set pending_approval status
+            user['pending_approval'] = False
+            save_users(users_data)
+            return True, f"User {username} has been approved"
+
+    return False, "User not found"
+
+def reject_user(username):
+    """Reject a pending user registration by deleting the user"""
+    print(f"[INFO] Rejecting user registration: {username}")
+    users_data = get_users()
+
+    # Find the user to reject
+    for i, user in enumerate(users_data['users']):
+        if user['username'] == username:
+            if not user.get('pending_approval', False):
+                return False, "User is not pending approval"
+
+            # Remove the user
+            users_data['users'].pop(i)
+            save_users(users_data)
+            return True, f"User {username} registration has been rejected"
+
     return False, "User not found"
 
 # Quota management functions

@@ -43,6 +43,16 @@
               </div>
             </div>
           </div>
+
+          <!-- Pending Users -->
+          <div class="card p-4 mt-6">
+            <h2 class="text-xl font-semibold mb-4">Pending Registrations</h2>
+            <div id="pending-users-list" class="mt-4">
+              <div class="flex justify-center p-8">
+                <div class="loader"></div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Add user form -->
@@ -308,74 +318,150 @@
     // Display users list
     function displayUsersList(users) {
       const usersList = document.getElementById('users-list');
+      const pendingUsersList = document.getElementById('pending-users-list');
 
-      if (!users || users.length === 0) {
+      // Filter out pending users
+      const activeUsers = users.filter(user => !user.pending_approval);
+      const pendingUsers = users.filter(user => user.pending_approval);
+
+      // Display active users
+      if (!activeUsers || activeUsers.length === 0) {
         usersList.innerHTML = '<div class="text-center p-8">No users found</div>';
-        return;
+      } else {
+        let html = `
+          <div class="overflow-x-auto">
+            <table class="table w-full">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Admin</th>
+                  <th>Status</th>
+                  <th>Quotas (D/W/M)</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+
+        activeUsers.forEach(user => {
+          html += `
+            <tr>
+              <td>${user.username}</td>
+              <td>${user.is_admin ? '<span class="text-green-500"><i class="fas fa-check"></i></span>' : '<span class="text-red-500"><i class="fas fa-times"></i></span>'}</td>
+              <td>
+                ${user.suspended ?
+                  '<span class="text-red-500 font-semibold">Suspended</span>' :
+                  '<span class="text-green-500 font-semibold">Active</span>'}
+              </td>
+              <td>
+                ${user.is_admin ? '<span class="text-gray-400">N/A (Admin)</span>' :
+                  `<span class="text-xs">
+                    <span class="${user.quotas.daily.limit > 0 ? 'text-green-500' : 'text-gray-400'}">${user.quotas.daily.used}/${user.quotas.daily.limit || '∞'}</span> /
+                    <span class="${user.quotas.weekly.limit > 0 ? 'text-green-500' : 'text-gray-400'}">${user.quotas.weekly.used}/${user.quotas.weekly.limit || '∞'}</span> /
+                    <span class="${user.quotas.monthly.limit > 0 ? 'text-green-500' : 'text-gray-400'}">${user.quotas.monthly.used}/${user.quotas.monthly.limit || '∞'}</span>
+                  </span>
+                  <button
+                    class="text-yellow-500 hover:text-yellow-700 ml-2"
+                    onclick="showQuotaModal('${user.username}')"
+                    title="Edit quotas"
+                  >
+                    <i class="fas fa-edit"></i>
+                  </button>`
+                }
+              </td>
+              <td class="flex space-x-2">
+                <button
+                  class="text-blue-500 hover:text-blue-700"
+                  onclick="showChangePasswordModal('${user.username}')"
+                  title="Change password"
+                >
+                  <i class="fas fa-key"></i>
+                </button>
+                ${user.suspended ?
+                  `<button
+                    class="text-green-500 hover:text-green-700"
+                    onclick="unsuspendUser('${user.username}')"
+                    title="Unsuspend user"
+                  >
+                    <i class="fas fa-user-check"></i>
+                  </button>` :
+                  `<button
+                    class="text-yellow-500 hover:text-yellow-700"
+                    onclick="suspendUser('${user.username}')"
+                    title="Suspend user"
+                  >
+                    <i class="fas fa-user-slash"></i>
+                  </button>`
+                }
+                <button
+                  class="text-red-500 hover:text-red-700"
+                  onclick="deleteUser('${user.username}')"
+                  title="Delete user"
+                >
+                  <i class="fas fa-trash"></i>
+                </button>
+              </td>
+            </tr>
+          `;
+        });
+
+        html += `
+              </tbody>
+            </table>
+          </div>
+        `;
+
+        usersList.innerHTML = html;
       }
 
-      let html = `
-        <div class="overflow-x-auto">
-          <table class="table w-full">
-            <thead>
-              <tr>
-                <th>Username</th>
-                <th>Admin</th>
-                <th>Quotas (D/W/M)</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-      `;
-
-      users.forEach(user => {
-        html += `
-          <tr>
-            <td>${user.username}</td>
-            <td>${user.is_admin ? '<span class="text-green-500"><i class="fas fa-check"></i></span>' : '<span class="text-red-500"><i class="fas fa-times"></i></span>'}</td>
-            <td>
-              ${user.is_admin ? '<span class="text-gray-400">N/A (Admin)</span>' :
-                `<span class="text-xs">
-                  <span class="${user.quotas.daily.limit > 0 ? 'text-green-500' : 'text-gray-400'}">${user.quotas.daily.used}/${user.quotas.daily.limit || '∞'}</span> /
-                  <span class="${user.quotas.weekly.limit > 0 ? 'text-green-500' : 'text-gray-400'}">${user.quotas.weekly.used}/${user.quotas.weekly.limit || '∞'}</span> /
-                  <span class="${user.quotas.monthly.limit > 0 ? 'text-green-500' : 'text-gray-400'}">${user.quotas.monthly.used}/${user.quotas.monthly.limit || '∞'}</span>
-                </span>
-                <button
-                  class="text-yellow-500 hover:text-yellow-700 ml-2"
-                  onclick="showQuotaModal('${user.username}')"
-                  title="Edit quotas"
-                >
-                  <i class="fas fa-edit"></i>
-                </button>`
-              }
-            </td>
-            <td class="flex space-x-2">
-              <button
-                class="text-blue-500 hover:text-blue-700"
-                onclick="showChangePasswordModal('${user.username}')"
-                title="Change password"
-              >
-                <i class="fas fa-key"></i>
-              </button>
-              <button
-                class="text-red-500 hover:text-red-700"
-                onclick="deleteUser('${user.username}')"
-                title="Delete user"
-              >
-                <i class="fas fa-trash"></i>
-              </button>
-            </td>
-          </tr>
+      // Display pending users
+      if (!pendingUsers || pendingUsers.length === 0) {
+        pendingUsersList.innerHTML = '<div class="text-center p-8">No pending registrations</div>';
+      } else {
+        let html = `
+          <div class="overflow-x-auto">
+            <table class="table w-full">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
         `;
-      });
 
-      html += `
-            </tbody>
-          </table>
-        </div>
-      `;
+        pendingUsers.forEach(user => {
+          html += `
+            <tr>
+              <td>${user.username}</td>
+              <td class="flex space-x-2">
+                <button
+                  class="text-green-500 hover:text-green-700"
+                  onclick="approveUser('${user.username}')"
+                  title="Approve user"
+                >
+                  <i class="fas fa-check"></i>
+                </button>
+                <button
+                  class="text-red-500 hover:text-red-700"
+                  onclick="rejectUser('${user.username}')"
+                  title="Reject user"
+                >
+                  <i class="fas fa-times"></i>
+                </button>
+              </td>
+            </tr>
+          `;
+        });
 
-      usersList.innerHTML = html;
+        html += `
+              </tbody>
+            </table>
+          </div>
+        `;
+
+        pendingUsersList.innerHTML = html;
+      }
     }
 
     // Delete user
@@ -563,6 +649,106 @@
       }
     });
 
+    // Suspend user
+    async function suspendUser(username) {
+      if (!confirm(`Are you sure you want to suspend user "${username}"?`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/users/${username}/suspend`, {
+          method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert('User suspended successfully');
+          location.reload();
+        } else {
+          alert(data.message || 'Failed to suspend user');
+        }
+      } catch (error) {
+        console.error('Error suspending user:', error);
+        alert('Error suspending user');
+      }
+    }
+
+    // Unsuspend user
+    async function unsuspendUser(username) {
+      if (!confirm(`Are you sure you want to unsuspend user "${username}"?`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/users/${username}/unsuspend`, {
+          method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert('User unsuspended successfully');
+          location.reload();
+        } else {
+          alert(data.message || 'Failed to unsuspend user');
+        }
+      } catch (error) {
+        console.error('Error unsuspending user:', error);
+        alert('Error unsuspending user');
+      }
+    }
+
+    // Approve user
+    async function approveUser(username) {
+      if (!confirm(`Are you sure you want to approve user "${username}"?`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/users/${username}/approve`, {
+          method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert('User approved successfully');
+          location.reload();
+        } else {
+          alert(data.message || 'Failed to approve user');
+        }
+      } catch (error) {
+        console.error('Error approving user:', error);
+        alert('Error approving user');
+      }
+    }
+
+    // Reject user
+    async function rejectUser(username) {
+      if (!confirm(`Are you sure you want to reject user "${username}"?`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/users/${username}/reject`, {
+          method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert('User rejected successfully');
+          location.reload();
+        } else {
+          alert(data.message || 'Failed to reject user');
+        }
+      } catch (error) {
+        console.error('Error rejecting user:', error);
+        alert('Error rejecting user');
+      }
+    }
+
     // Update user stats
     function updateUserStats(users) {
       if (!users) {
@@ -573,8 +759,10 @@
 
       const totalUsers = users.length;
       const adminUsers = users.filter(user => user.is_admin).length;
+      const pendingUsers = users.filter(user => user.pending_approval).length;
+      const suspendedUsers = users.filter(user => user.suspended).length;
 
-      document.getElementById('total-users-count').textContent = totalUsers;
+      document.getElementById('total-users-count').textContent = totalUsers - pendingUsers;
       document.getElementById('admin-users-count').textContent = adminUsers;
     }
   </script>
