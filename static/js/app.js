@@ -49,7 +49,7 @@ const searchForm = document.getElementById('search-form');
 const searchResults = document.getElementById('search-results');
 const downloadsList = document.getElementById('downloads-list');
 const usersList = document.getElementById('users-list');
-const logoutButton = document.getElementById('logout-button');
+const logoutButton = document.getElementById('logout-btn'); // Updated to match sidebar.js
 
 // Auth state
 let currentUser = null;
@@ -327,8 +327,12 @@ function setupEventListeners() {
     }
 
     // Logout button
-    if (logoutButton) {
-      logoutButton.addEventListener('click', handleLogout);
+    // Note: The logout button is now handled in sidebar.js
+    // This is a fallback in case the sidebar.js event listener doesn't work
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn && !logoutBtn._hasLogoutListener) {
+      logoutBtn.addEventListener('click', handleLogout);
+      logoutBtn._hasLogoutListener = true;
     }
   }, 100);
 }

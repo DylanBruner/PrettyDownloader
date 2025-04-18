@@ -195,14 +195,51 @@ function createSidebar(isAdmin, currentPath) {
 
   // Add event listener to logout button
   document.getElementById('logout-btn').addEventListener('click', () => {
+    // Get refresh token from storage
+    const refreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token');
+
+    // Clear tokens from storage
+    if (window.clearAuthTokens) {
+      window.clearAuthTokens();
+    } else {
+      // Fallback if clearAuthTokens is not available
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('token_expires_at');
+      localStorage.removeItem('username');
+      localStorage.removeItem('is_admin');
+
+      sessionStorage.removeItem('access_token');
+      sessionStorage.removeItem('refresh_token');
+      sessionStorage.removeItem('token_expires_at');
+      sessionStorage.removeItem('username');
+      sessionStorage.removeItem('is_admin');
+    }
+
+    // Call logout API to invalidate the token on the server
     fetch('/api/auth/logout', {
-      method: 'POST'
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        refresh_token: refreshToken
+      })
     })
     .then(response => response.json())
     .then(data => {
       if (data.success) {
         window.location.href = '/login';
+      } else {
+        console.error('Logout failed');
+        // Still redirect to login page even if server-side logout fails
+        window.location.href = '/login';
       }
+    })
+    .catch(error => {
+      console.error('Error during logout:', error);
+      // Still redirect to login page on error
+      window.location.href = '/login';
     });
   });
 
