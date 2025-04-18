@@ -60,11 +60,30 @@
                 <input type="password" id="new-password" class="form-input w-full" required>
               </div>
 
-              <div class="mb-6">
+              <div class="mb-4">
                 <label class="flex items-center">
                   <input type="checkbox" id="new-is-admin" class="mr-2">
                   <span>Admin privileges</span>
                 </label>
+                <p class="text-xs text-gray-400 mt-1">Admins are exempt from download quotas</p>
+              </div>
+
+              <div class="mb-4">
+                <label for="new-daily-quota" class="block text-sm font-medium mb-2">Daily Quota</label>
+                <input type="number" id="new-daily-quota" class="form-input w-full" min="0" step="1" value="0">
+                <p class="text-xs text-gray-400 mt-1">Maximum downloads per day (0 = unlimited)</p>
+              </div>
+
+              <div class="mb-4">
+                <label for="new-weekly-quota" class="block text-sm font-medium mb-2">Weekly Quota</label>
+                <input type="number" id="new-weekly-quota" class="form-input w-full" min="0" step="1" value="0">
+                <p class="text-xs text-gray-400 mt-1">Maximum downloads per week (0 = unlimited)</p>
+              </div>
+
+              <div class="mb-6">
+                <label for="new-monthly-quota" class="block text-sm font-medium mb-2">Monthly Quota</label>
+                <input type="number" id="new-monthly-quota" class="form-input w-full" min="0" step="1" value="0">
+                <p class="text-xs text-gray-400 mt-1">Maximum downloads per month (0 = unlimited)</p>
               </div>
 
               <button type="submit" class="btn btn-primary w-full">
@@ -135,6 +154,58 @@
     </div>
   </div>
 
+  <!-- Edit Quota Modal -->
+  <div id="quota-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
+    <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+    <div class="card p-6 max-w-md w-full z-10">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold">Edit Download Quotas</h3>
+        <button onclick="hideQuotaModal()" class="text-gray-400 hover:text-white">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <p class="mb-4">Edit quotas for: <span id="quota-username" class="font-semibold"></span></p>
+      <p class="text-sm text-gray-400 mb-4">Set to 0 for unlimited downloads.</p>
+
+      <form id="quota-form" class="mt-4">
+        <div class="mb-4">
+          <label for="daily-quota" class="block text-sm font-medium mb-2">Daily Quota</label>
+          <input type="number" id="daily-quota" class="form-input w-full" min="0" step="1" required>
+          <p class="text-xs text-gray-400 mt-1">Maximum downloads per day</p>
+        </div>
+
+        <div class="mb-4">
+          <label for="weekly-quota" class="block text-sm font-medium mb-2">Weekly Quota</label>
+          <input type="number" id="weekly-quota" class="form-input w-full" min="0" step="1" required>
+          <p class="text-xs text-gray-400 mt-1">Maximum downloads per week</p>
+        </div>
+
+        <div class="mb-4">
+          <label for="monthly-quota" class="block text-sm font-medium mb-2">Monthly Quota</label>
+          <input type="number" id="monthly-quota" class="form-input w-full" min="0" step="1" required>
+          <p class="text-xs text-gray-400 mt-1">Maximum downloads per month</p>
+        </div>
+
+        <div class="flex justify-end gap-2 mt-6">
+          <button
+            type="button"
+            onclick="hideQuotaModal()"
+            class="btn bg-gray-600 text-white hover:bg-gray-700"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="btn btn-primary"
+          >
+            <i class="fas fa-save mr-1"></i> Save
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Custom JavaScript -->
   <script src="/static/js/sidebar.js"></script>
   <script src="/static/js/topbar.js"></script>
@@ -182,6 +253,9 @@
             const username = document.getElementById('new-username').value.trim();
             const password = document.getElementById('new-password').value.trim();
             const isAdmin = document.getElementById('new-is-admin').checked;
+            const dailyQuota = parseInt(document.getElementById('new-daily-quota').value) || 0;
+            const weeklyQuota = parseInt(document.getElementById('new-weekly-quota').value) || 0;
+            const monthlyQuota = parseInt(document.getElementById('new-monthly-quota').value) || 0;
 
             if (!username || !password) {
               alert('Username and password are required');
@@ -197,7 +271,10 @@
                 body: JSON.stringify({
                   username: username,
                   password: password,
-                  is_admin: isAdmin
+                  is_admin: isAdmin,
+                  daily_quota: dailyQuota,
+                  weekly_quota: weeklyQuota,
+                  monthly_quota: monthlyQuota
                 })
               });
 
@@ -210,6 +287,9 @@
                 document.getElementById('new-username').value = '';
                 document.getElementById('new-password').value = '';
                 document.getElementById('new-is-admin').checked = false;
+                document.getElementById('new-daily-quota').value = '0';
+                document.getElementById('new-weekly-quota').value = '0';
+                document.getElementById('new-monthly-quota').value = '0';
 
                 // Refresh users list
                 location.reload();
@@ -241,6 +321,7 @@
               <tr>
                 <th>Username</th>
                 <th>Admin</th>
+                <th>Quotas (D/W/M)</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -252,6 +333,22 @@
           <tr>
             <td>${user.username}</td>
             <td>${user.is_admin ? '<span class="text-green-500"><i class="fas fa-check"></i></span>' : '<span class="text-red-500"><i class="fas fa-times"></i></span>'}</td>
+            <td>
+              ${user.is_admin ? '<span class="text-gray-400">N/A (Admin)</span>' :
+                `<span class="text-xs">
+                  <span class="${user.quotas.daily.limit > 0 ? 'text-green-500' : 'text-gray-400'}">${user.quotas.daily.used}/${user.quotas.daily.limit || '∞'}</span> /
+                  <span class="${user.quotas.weekly.limit > 0 ? 'text-green-500' : 'text-gray-400'}">${user.quotas.weekly.used}/${user.quotas.weekly.limit || '∞'}</span> /
+                  <span class="${user.quotas.monthly.limit > 0 ? 'text-green-500' : 'text-gray-400'}">${user.quotas.monthly.used}/${user.quotas.monthly.limit || '∞'}</span>
+                </span>
+                <button
+                  class="text-yellow-500 hover:text-yellow-700 ml-2"
+                  onclick="showQuotaModal('${user.username}')"
+                  title="Edit quotas"
+                >
+                  <i class="fas fa-edit"></i>
+                </button>`
+              }
+            </td>
             <td class="flex space-x-2">
               <button
                 class="text-blue-500 hover:text-blue-700"
@@ -367,6 +464,92 @@
           } catch (error) {
             console.error('Error changing password:', error);
             alert('Error changing password');
+          }
+        });
+      }
+    });
+
+    // Show quota modal
+    function showQuotaModal(username) {
+      const modal = document.getElementById('quota-modal');
+      const usernameSpan = document.getElementById('quota-username');
+      const form = document.getElementById('quota-form');
+
+      // Set username
+      usernameSpan.textContent = username;
+      form.setAttribute('data-username', username);
+
+      // Fetch current quotas
+      fetchUserQuotas(username);
+
+      // Show modal
+      modal.classList.remove('hidden');
+    }
+
+    // Hide quota modal
+    function hideQuotaModal() {
+      const modal = document.getElementById('quota-modal');
+      modal.classList.add('hidden');
+    }
+
+    // Fetch user quotas
+    async function fetchUserQuotas(username) {
+      try {
+        const response = await fetch(`/api/users/${username}/quotas`);
+        const data = await response.json();
+
+        if (data.success) {
+          // Populate form with quotas
+          document.getElementById('daily-quota').value = data.quotas.daily.limit || 0;
+          document.getElementById('weekly-quota').value = data.quotas.weekly.limit || 0;
+          document.getElementById('monthly-quota').value = data.quotas.monthly.limit || 0;
+        } else {
+          alert(data.message || 'Failed to fetch user quotas');
+        }
+      } catch (error) {
+        console.error('Error fetching user quotas:', error);
+        alert('Error fetching user quotas');
+      }
+    }
+
+    // Setup quota form
+    document.addEventListener('DOMContentLoaded', function() {
+      const quotaForm = document.getElementById('quota-form');
+
+      if (quotaForm) {
+        quotaForm.addEventListener('submit', async function(e) {
+          e.preventDefault();
+
+          const username = this.getAttribute('data-username');
+          const dailyQuota = parseInt(document.getElementById('daily-quota').value) || 0;
+          const weeklyQuota = parseInt(document.getElementById('weekly-quota').value) || 0;
+          const monthlyQuota = parseInt(document.getElementById('monthly-quota').value) || 0;
+
+          try {
+            const response = await fetch(`/api/users/${username}/quotas`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                daily_quota: dailyQuota,
+                weekly_quota: weeklyQuota,
+                monthly_quota: monthlyQuota
+              })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+              alert('Quotas updated successfully');
+              hideQuotaModal();
+              location.reload();
+            } else {
+              alert(data.message || 'Failed to update quotas');
+            }
+          } catch (error) {
+            console.error('Error updating quotas:', error);
+            alert('Error updating quotas');
           }
         });
       }

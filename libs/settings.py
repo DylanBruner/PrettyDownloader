@@ -47,6 +47,11 @@ def get_settings_from_env():
         "REFRESH_TOKEN_EXPIRY": int(os.environ.get("REFRESH_TOKEN_EXPIRY", 30 * 24 * 60 * 60)),  # 30 days in seconds
         "SHORT_REFRESH_TOKEN_EXPIRY": int(os.environ.get("SHORT_REFRESH_TOKEN_EXPIRY", 24 * 60 * 60)),  # 1 day in seconds
 
+        # Default user quotas
+        "default-daily-quota": int(os.environ.get("default-daily-quota", 0)),  # 0 = unlimited
+        "default-weekly-quota": int(os.environ.get("default-weekly-quota", 0)),  # 0 = unlimited
+        "default-monthly-quota": int(os.environ.get("default-monthly-quota", 0)),  # 0 = unlimited
+
         # Provider settings
         "providers": {}
     }

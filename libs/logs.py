@@ -155,6 +155,22 @@ def log_download_failed(username, torrent_name, torrent_hash, reason):
     }
     return add_log('download_failed', username, details)
 
+def log_quota_exceeded(username, quota_type, limit, used):
+    """Log a quota exceeded event
+
+    Args:
+        username (str): Username that exceeded the quota
+        quota_type (str): Type of quota ('daily', 'weekly', 'monthly')
+        limit (int): Quota limit
+        used (int): Current usage
+    """
+    details = {
+        'quota_type': quota_type,
+        'limit': limit,
+        'used': used
+    }
+    return add_log('quota_exceeded', username, details)
+
 def log_user_created(admin_username, created_username, is_admin):
     """Log user creation
 

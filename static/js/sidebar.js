@@ -73,6 +73,9 @@ function createSidebar(isAdmin, currentPath) {
     }
   }
 
+  // Fetch user quotas if user is not admin
+  fetchUserQuotas();
+
   // Create sidebar content
   sidebar.innerHTML = `
     <div class="sidebar-header p-4 border-b border-gray-800">
@@ -83,6 +86,41 @@ function createSidebar(isAdmin, currentPath) {
     </div>
 
     <div class="sidebar-content p-4">
+      <div id="quota-display" class="mb-4 p-3 bg-gray-800 rounded-md">
+        <h3 class="text-sm font-semibold mb-2 flex items-center">
+          <i class="fas fa-chart-pie text-red-500 mr-2"></i>
+          Download Quotas
+        </h3>
+        <div class="space-y-2">
+          <div class="quota-item">
+            <div class="flex justify-between text-xs">
+              <span>Daily:</span>
+              <span id="daily-quota-text">Loading...</span>
+            </div>
+            <div class="w-full bg-gray-700 rounded-full h-2 mt-1">
+              <div id="daily-quota-bar" class="bg-red-500 h-2 rounded-full" style="width: 0%"></div>
+            </div>
+          </div>
+          <div class="quota-item">
+            <div class="flex justify-between text-xs">
+              <span>Weekly:</span>
+              <span id="weekly-quota-text">Loading...</span>
+            </div>
+            <div class="w-full bg-gray-700 rounded-full h-2 mt-1">
+              <div id="weekly-quota-bar" class="bg-red-500 h-2 rounded-full" style="width: 0%"></div>
+            </div>
+          </div>
+          <div class="quota-item">
+            <div class="flex justify-between text-xs">
+              <span>Monthly:</span>
+              <span id="monthly-quota-text">Loading...</span>
+            </div>
+            <div class="w-full bg-gray-700 rounded-full h-2 mt-1">
+              <div id="monthly-quota-bar" class="bg-red-500 h-2 rounded-full" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
       <nav>
         <ul class="space-y-2">
           <li>
@@ -236,6 +274,84 @@ function createSidebar(isAdmin, currentPath) {
     /* We don't need to add margin to body since the layout already handles it */
   `;
   document.head.appendChild(style);
+}
+
+/**
+ * Fetches and displays the user's quota information
+ */
+function fetchUserQuotas() {
+  fetch('/api/users/self/quotas')
+    .then(response => response.json())
+    .then(data => {
+      if (data.success && data.quotas) {
+        updateQuotaDisplay(data.quotas);
+      } else {
+        console.error('Failed to fetch quotas:', data.message);
+      }
+    })
+    .catch(error => {
+      console.error('Error fetching quotas:', error);
+    });
+}
+
+// Make fetchUserQuotas available globally so it can be called from other pages
+window.refreshQuotaDisplay = fetchUserQuotas;
+
+/**
+ * Updates the quota display with the provided quota information
+ * @param {Object} quotas - The quota information
+ */
+function updateQuotaDisplay(quotas) {
+  // Update daily quota
+  updateQuotaItem('daily', quotas.daily);
+
+  // Update weekly quota
+  updateQuotaItem('weekly', quotas.weekly);
+
+  // Update monthly quota
+  updateQuotaItem('monthly', quotas.monthly);
+}
+
+/**
+ * Updates a single quota item display
+ * @param {string} type - The quota type (daily, weekly, monthly)
+ * @param {Object} quota - The quota information
+ */
+function updateQuotaItem(type, quota) {
+  const textElement = document.getElementById(`${type}-quota-text`);
+  const barElement = document.getElementById(`${type}-quota-bar`);
+
+  if (!textElement || !barElement) return;
+
+  // If limit is 0, it means unlimited
+  if (quota.limit === 0) {
+    textElement.textContent = `${quota.used} / ∞`;
+    barElement.style.width = '0%';
+    barElement.classList.remove('bg-yellow-500', 'bg-red-500');
+    barElement.classList.add('bg-green-500');
+    return;
+  }
+
+  // Calculate percentage
+  const percentage = Math.min(100, Math.round((quota.used / quota.limit) * 100));
+
+  // Update text
+  textElement.textContent = `${quota.used} / ${quota.limit}`;
+
+  // Update progress bar
+  barElement.style.width = `${percentage}%`;
+
+  // Update color based on usage
+  if (percentage >= 90) {
+    barElement.classList.remove('bg-green-500', 'bg-yellow-500');
+    barElement.classList.add('bg-red-500');
+  } else if (percentage >= 70) {
+    barElement.classList.remove('bg-green-500', 'bg-red-500');
+    barElement.classList.add('bg-yellow-500');
+  } else {
+    barElement.classList.remove('bg-yellow-500', 'bg-red-500');
+    barElement.classList.add('bg-green-500');
+  }
 }
 
 // Initialize sidebar when DOM is loaded

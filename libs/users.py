@@ -1,8 +1,11 @@
 import os
 import json
 import bcrypt
+import datetime
+from datetime import timedelta
 from flask import session
 import libs.tokens as tokens
+import libs.logs as logs
 
 # Path to the users database file
 USERS_DB_PATH = os.environ.get('USERS_DB_PATH', 'users.json')
@@ -42,8 +45,8 @@ def save_users(users_data):
     with open(USERS_DB_PATH, 'w') as f:
         json.dump(users_data, f, indent=2)
 
-def create_user(username, password, is_admin=False):
-    """Create a new user with hashed password"""
+def create_user(username, password, is_admin=False, daily_quota=0, weekly_quota=0, monthly_quota=0):
+    """Create a new user with hashed password and quotas"""
     users_data = get_users()
 
     # Check if username already exists
@@ -54,11 +57,31 @@ def create_user(username, password, is_admin=False):
     # Hash the password
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
+    # Get current timestamp for quota reset dates
+    now = datetime.datetime.now().isoformat()
+
     # Add the new user
     users_data['users'].append({
         'username': username,
         'password': hashed_password.decode('utf-8'),  # Store as string
-        'is_admin': is_admin
+        'is_admin': is_admin,
+        'quotas': {
+            'daily': {
+                'limit': daily_quota,
+                'used': 0,
+                'reset_date': now
+            },
+            'weekly': {
+                'limit': weekly_quota,
+                'used': 0,
+                'reset_date': now
+            },
+            'monthly': {
+                'limit': monthly_quota,
+                'used': 0,
+                'reset_date': now
+            }
+        }
     })
 
     save_users(users_data)
@@ -176,10 +199,15 @@ def get_all_users():
     for user in users_data['users']:
         safe_user = {
             'username': user['username'],
-            'is_admin': user.get('is_admin', False)
+            'is_admin': user.get('is_admin', False),
+            'quotas': user.get('quotas', {
+                'daily': {'limit': 0, 'used': 0, 'reset_date': datetime.datetime.now().isoformat()},
+                'weekly': {'limit': 0, 'used': 0, 'reset_date': datetime.datetime.now().isoformat()},
+                'monthly': {'limit': 0, 'used': 0, 'reset_date': datetime.datetime.now().isoformat()}
+            })
         }
         safe_users.append(safe_user)
-        print(f"[INFO] Added safe user: {safe_user}")
+        print(f"[INFO] Added safe user: {safe_user['username']}")
 
     print(f"[INFO] Returning {len(safe_users)} safe users")
     return safe_users
@@ -243,3 +271,176 @@ def change_password(username, new_password):
 
     print(f"[ERROR] User {username} not found")
     return False, "User not found"
+
+# Quota management functions
+def update_user_quotas(username, daily_quota=None, weekly_quota=None, monthly_quota=None):
+    """Update a user's quota limits"""
+    print(f"[INFO] Updating quotas for user: {username}")
+    users_data = get_users()
+
+    for user in users_data['users']:
+        if user['username'] == username:
+            # Initialize quotas if they don't exist
+            if 'quotas' not in user:
+                now = datetime.datetime.now().isoformat()
+                user['quotas'] = {
+                    'daily': {'limit': 0, 'used': 0, 'reset_date': now},
+                    'weekly': {'limit': 0, 'used': 0, 'reset_date': now},
+                    'monthly': {'limit': 0, 'used': 0, 'reset_date': now}
+                }
+
+            # Update quota limits if provided
+            if daily_quota is not None:
+                user['quotas']['daily']['limit'] = daily_quota
+            if weekly_quota is not None:
+                user['quotas']['weekly']['limit'] = weekly_quota
+            if monthly_quota is not None:
+                user['quotas']['monthly']['limit'] = monthly_quota
+
+            print(f"[INFO] Updated quotas for {username}: daily={user['quotas']['daily']['limit']}, weekly={user['quotas']['weekly']['limit']}, monthly={user['quotas']['monthly']['limit']}")
+            save_users(users_data)
+            return True, "Quotas updated successfully"
+
+    print(f"[ERROR] User {username} not found")
+    return False, "User not found"
+
+def check_quota_reset(username):
+    """Check and reset quotas if needed"""
+    users_data = get_users()
+
+    for user in users_data['users']:
+        if user['username'] == username:
+            # Initialize quotas if they don't exist
+            if 'quotas' not in user:
+                now = datetime.datetime.now().isoformat()
+                user['quotas'] = {
+                    'daily': {'limit': 0, 'used': 0, 'reset_date': now},
+                    'weekly': {'limit': 0, 'used': 0, 'reset_date': now},
+                    'monthly': {'limit': 0, 'used': 0, 'reset_date': now}
+                }
+                save_users(users_data)
+                return
+
+            now = datetime.datetime.now()
+            updated = False
+
+            # Check daily quota reset
+            if 'reset_date' in user['quotas']['daily']:
+                reset_date = datetime.datetime.fromisoformat(user['quotas']['daily']['reset_date'])
+                if (now - reset_date).days >= 1:  # Reset if 1 or more days have passed
+                    user['quotas']['daily']['used'] = 0
+                    user['quotas']['daily']['reset_date'] = now.isoformat()
+                    print(f"[INFO] Reset daily quota for {username}")
+                    updated = True
+
+            # Check weekly quota reset
+            if 'reset_date' in user['quotas']['weekly']:
+                reset_date = datetime.datetime.fromisoformat(user['quotas']['weekly']['reset_date'])
+                if (now - reset_date).days >= 7:  # Reset if 7 or more days have passed
+                    user['quotas']['weekly']['used'] = 0
+                    user['quotas']['weekly']['reset_date'] = now.isoformat()
+                    print(f"[INFO] Reset weekly quota for {username}")
+                    updated = True
+
+            # Check monthly quota reset
+            if 'reset_date' in user['quotas']['monthly']:
+                reset_date = datetime.datetime.fromisoformat(user['quotas']['monthly']['reset_date'])
+                if (now - reset_date).days >= 30:  # Reset if 30 or more days have passed
+                    user['quotas']['monthly']['used'] = 0
+                    user['quotas']['monthly']['reset_date'] = now.isoformat()
+                    print(f"[INFO] Reset monthly quota for {username}")
+                    updated = True
+
+            if updated:
+                save_users(users_data)
+            return
+
+def check_quota_limits(username):
+    """Check if a user has exceeded any quota limits"""
+    # First check and reset quotas if needed
+    check_quota_reset(username)
+
+    users_data = get_users()
+
+    for user in users_data['users']:
+        if user['username'] == username:
+            # Skip quota check for admins
+            if user.get('is_admin', False):
+                return True, None
+
+            # Check if quotas exist
+            if 'quotas' not in user:
+                return True, None
+
+            quotas = user['quotas']
+
+            # Check daily quota
+            if quotas['daily']['limit'] > 0 and quotas['daily']['used'] >= quotas['daily']['limit']:
+                # Log quota exceeded event
+                logs.log_quota_exceeded(username, 'daily', quotas['daily']['limit'], quotas['daily']['used'])
+                return False, "Daily download quota exceeded"
+
+            # Check weekly quota
+            if quotas['weekly']['limit'] > 0 and quotas['weekly']['used'] >= quotas['weekly']['limit']:
+                # Log quota exceeded event
+                logs.log_quota_exceeded(username, 'weekly', quotas['weekly']['limit'], quotas['weekly']['used'])
+                return False, "Weekly download quota exceeded"
+
+            # Check monthly quota
+            if quotas['monthly']['limit'] > 0 and quotas['monthly']['used'] >= quotas['monthly']['limit']:
+                # Log quota exceeded event
+                logs.log_quota_exceeded(username, 'monthly', quotas['monthly']['limit'], quotas['monthly']['used'])
+                return False, "Monthly download quota exceeded"
+
+            return True, None
+
+    return True, None  # Default to allowing if user not found
+
+def increment_download_count(username):
+    """Increment a user's download count for all quota periods"""
+    users_data = get_users()
+
+    for user in users_data['users']:
+        if user['username'] == username:
+            # Initialize quotas if they don't exist
+            if 'quotas' not in user:
+                now = datetime.datetime.now().isoformat()
+                user['quotas'] = {
+                    'daily': {'limit': 0, 'used': 0, 'reset_date': now},
+                    'weekly': {'limit': 0, 'used': 0, 'reset_date': now},
+                    'monthly': {'limit': 0, 'used': 0, 'reset_date': now}
+                }
+
+            # Increment download counts
+            user['quotas']['daily']['used'] += 1
+            user['quotas']['weekly']['used'] += 1
+            user['quotas']['monthly']['used'] += 1
+
+            print(f"[INFO] Incremented download counts for {username}: daily={user['quotas']['daily']['used']}/{user['quotas']['daily']['limit']}, weekly={user['quotas']['weekly']['used']}/{user['quotas']['weekly']['limit']}, monthly={user['quotas']['monthly']['used']}/{user['quotas']['monthly']['limit']}")
+            save_users(users_data)
+            return True
+
+    return False
+
+def get_user_quotas(username):
+    """Get a user's quota information"""
+    # First check and reset quotas if needed
+    check_quota_reset(username)
+
+    users_data = get_users()
+
+    for user in users_data['users']:
+        if user['username'] == username:
+            # Initialize quotas if they don't exist
+            if 'quotas' not in user:
+                now = datetime.datetime.now().isoformat()
+                user['quotas'] = {
+                    'daily': {'limit': 0, 'used': 0, 'reset_date': now},
+                    'weekly': {'limit': 0, 'used': 0, 'reset_date': now},
+                    'monthly': {'limit': 0, 'used': 0, 'reset_date': now}
+                }
+                save_users(users_data)
+
+            return user['quotas']
+
+    return None

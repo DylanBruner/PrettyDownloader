@@ -232,6 +232,34 @@
           </div>
 
           <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Default User Quotas</h3>
+            <p class="text-sm text-gray-400 mb-4">
+              These settings define the default download quotas for new users. Set to 0 for unlimited.
+              Admins are exempt from quotas.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <label for="default-daily-quota" class="block text-sm font-medium mb-2">Default Daily Quota</label>
+                <input type="number" id="default-daily-quota" name="default-daily-quota" class="form-input w-full" min="0" step="1">
+                <p class="text-xs text-gray-400 mt-1">Maximum downloads per day (0 = unlimited)</p>
+              </div>
+
+              <div>
+                <label for="default-weekly-quota" class="block text-sm font-medium mb-2">Default Weekly Quota</label>
+                <input type="number" id="default-weekly-quota" name="default-weekly-quota" class="form-input w-full" min="0" step="1">
+                <p class="text-xs text-gray-400 mt-1">Maximum downloads per week (0 = unlimited)</p>
+              </div>
+
+              <div>
+                <label for="default-monthly-quota" class="block text-sm font-medium mb-2">Default Monthly Quota</label>
+                <input type="number" id="default-monthly-quota" name="default-monthly-quota" class="form-input w-full" min="0" step="1">
+                <p class="text-xs text-gray-400 mt-1">Maximum downloads per month (0 = unlimited)</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-6">
             <h3 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Torrent Providers</h3>
             <p class="text-sm text-gray-400 mb-4">
               Enable or disable torrent providers used for searching.
@@ -350,6 +378,11 @@
 
           // Content filtering settings
           document.getElementById('hide-adult-content').checked = data.settings['hide-adult-content'] !== false; // Default to true
+
+          // Default user quotas
+          document.getElementById('default-daily-quota').value = data.settings['default-daily-quota'] || 0;
+          document.getElementById('default-weekly-quota').value = data.settings['default-weekly-quota'] || 0;
+          document.getElementById('default-monthly-quota').value = data.settings['default-monthly-quota'] || 0;
 
           // Display current config
           displayCurrentConfig(data.settings, data.overridden);
@@ -480,7 +513,12 @@
         'SHORT_REFRESH_TOKEN_EXPIRY': parseInt(document.getElementById('SHORT_REFRESH_TOKEN_EXPIRY').value) || 86400,
 
         // Content filtering settings
-        'hide-adult-content': document.getElementById('hide-adult-content').checked
+        'hide-adult-content': document.getElementById('hide-adult-content').checked,
+
+        // Default user quotas
+        'default-daily-quota': parseInt(document.getElementById('default-daily-quota').value) || 0,
+        'default-weekly-quota': parseInt(document.getElementById('default-weekly-quota').value) || 0,
+        'default-monthly-quota': parseInt(document.getElementById('default-monthly-quota').value) || 0
       };
 
       try {

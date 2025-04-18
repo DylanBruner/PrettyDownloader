@@ -46,6 +46,7 @@
                   <option value="login_failed">Failed Logins</option>
                   <option value="download">Downloads</option>
                   <option value="download_failed">Failed Downloads</option>
+                  <option value="quota_exceeded">Quota Exceeded</option>
                   <option value="user_created">User Created</option>
                   <option value="user_deleted">User Deleted</option>
                 </select>
@@ -243,6 +244,10 @@
             logTypeDisplay = '<i class="fas fa-exclamation-triangle mr-1"></i> Failed Download';
             logTypeClass = 'text-red-500';
             break;
+          case 'quota_exceeded':
+            logTypeDisplay = '<i class="fas fa-ban mr-1"></i> Quota Exceeded';
+            logTypeClass = 'text-orange-500';
+            break;
           case 'user_created':
             logTypeDisplay = '<i class="fas fa-user-plus mr-1"></i> User Created';
             logTypeClass = 'text-green-500';
@@ -276,6 +281,12 @@
           `;
         } else if (log.type === 'user_deleted' && log.details) {
           detailsHtml = `<div><strong>Deleted User:</strong> ${log.details.deleted_username || 'N/A'}</div>`;
+        } else if (log.type === 'quota_exceeded' && log.details) {
+          detailsHtml = `
+            <div><strong>Quota Type:</strong> ${log.details.quota_type.charAt(0).toUpperCase() + log.details.quota_type.slice(1)}</div>
+            <div><strong>Limit:</strong> ${log.details.limit}</div>
+            <div><strong>Used:</strong> ${log.details.used}</div>
+          `;
         }
 
         html += `
@@ -317,6 +328,12 @@
       document.getElementById('failed-login-logs-count').textContent = stats.failed_logins || '0';
       document.getElementById('user-created-logs-count').textContent = stats.user_created || '0';
       document.getElementById('user-deleted-logs-count').textContent = stats.user_deleted || '0';
+      // Add quota_exceeded count to failed downloads count for display purposes
+      const quotaExceeded = stats.quota_exceeded || 0;
+      if (quotaExceeded > 0) {
+        const failedDownloads = parseInt(document.getElementById('failed-download-logs-count').textContent) || 0;
+        document.getElementById('failed-download-logs-count').textContent = (failedDownloads + quotaExceeded).toString();
+      }
     }
   </script>
 </body>

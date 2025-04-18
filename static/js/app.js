@@ -1559,8 +1559,18 @@ async function submitDownload(path) {
       // Show results
       if (successCount > 0 && failCount === 0) {
         showToast(`Started ${successCount} downloads successfully`, 'success');
+
+        // Refresh quota display if available
+        if (window.refreshQuotaDisplay) {
+          window.refreshQuotaDisplay();
+        }
       } else if (successCount > 0 && failCount > 0) {
         showToast(`Started ${successCount} downloads, ${failCount} failed`, 'warning');
+
+        // Refresh quota display if available
+        if (window.refreshQuotaDisplay) {
+          window.refreshQuotaDisplay();
+        }
       } else {
         showToast('Failed to start any downloads', 'error');
       }
@@ -1607,6 +1617,11 @@ async function submitDownload(path) {
 
       if (response.ok && data.success) {
         showToast(`Started download: ${name}`, 'success');
+
+        // Refresh quota display if available
+        if (window.refreshQuotaDisplay) {
+          window.refreshQuotaDisplay();
+        }
 
         // Close modal
         const modal = document.getElementById('download-modal');

@@ -340,13 +340,26 @@ def route_api_users_create():
     password = request.json.get("password")
     is_admin = request.json.get("is_admin", False)
 
-    print(f"[INFO] New user data: username={username}, is_admin={is_admin}")
+    # Get quota settings from request or use defaults
+    daily_quota = request.json.get("daily_quota")
+    weekly_quota = request.json.get("weekly_quota")
+    monthly_quota = request.json.get("monthly_quota")
+
+    # If quotas not specified, use default settings
+    if daily_quota is None:
+        daily_quota = settings.get_effective_settings().get("default-daily-quota", 0)
+    if weekly_quota is None:
+        weekly_quota = settings.get_effective_settings().get("default-weekly-quota", 0)
+    if monthly_quota is None:
+        monthly_quota = settings.get_effective_settings().get("default-monthly-quota", 0)
+
+    print(f"[INFO] New user data: username={username}, is_admin={is_admin}, quotas=[daily={daily_quota}, weekly={weekly_quota}, monthly={monthly_quota}]")
 
     if not username or not password:
         print("[ERROR] Username or password missing")
         return jsonify({"success": False, "message": "Username and password are required"})
 
-    success, message = users.create_user(username, password, is_admin)
+    success, message = users.create_user(username, password, is_admin, daily_quota, weekly_quota, monthly_quota)
     print(f"[INFO] User creation result: success={success}, message={message}")
 
     # Log user creation if successful
@@ -408,6 +421,51 @@ def route_api_users_change_own_password():
     print(f"[INFO] Password change result: success={success}, message={message}")
     return jsonify({"success": success, "message": message})
 
+@app.route("/api/users/<username>/quotas", methods=["GET"])
+@auth_required
+@admin_required
+def route_api_users_get_quotas(username):
+    print(f"[INFO] Getting quotas for user: {username}")
+    quotas = users.get_user_quotas(username)
+
+    if quotas:
+        return jsonify({"success": True, "quotas": quotas})
+    else:
+        return jsonify({"success": False, "message": "User not found"}), 404
+
+@app.route("/api/users/<username>/quotas", methods=["POST"])
+@auth_required
+@admin_required
+def route_api_users_update_quotas(username):
+    print(f"[INFO] Updating quotas for user: {username}")
+    daily_quota = request.json.get("daily_quota")
+    weekly_quota = request.json.get("weekly_quota")
+    monthly_quota = request.json.get("monthly_quota")
+
+    # Convert to integers if provided
+    if daily_quota is not None:
+        daily_quota = int(daily_quota)
+    if weekly_quota is not None:
+        weekly_quota = int(weekly_quota)
+    if monthly_quota is not None:
+        monthly_quota = int(monthly_quota)
+
+    success, message = users.update_user_quotas(username, daily_quota, weekly_quota, monthly_quota)
+    print(f"[INFO] Quota update result: success={success}, message={message}")
+    return jsonify({"success": success, "message": message})
+
+@app.route("/api/users/self/quotas", methods=["GET"])
+@auth_required
+def route_api_users_get_own_quotas():
+    username = users.get_current_user()
+    print(f"[INFO] Getting quotas for current user: {username}")
+    quotas = users.get_user_quotas(username)
+
+    if quotas:
+        return jsonify({"success": True, "quotas": quotas})
+    else:
+        return jsonify({"success": False, "message": "User not found"}), 404
+
 @app.route("/api/download", methods=["POST"])
 @auth_required
 def route_api_download():
@@ -415,6 +473,14 @@ def route_api_download():
     infohash = request.json.get("hash")
     downloadpath = request.json.get("path")
     provider_id = request.json.get("provider_id")
+    current_user = users.get_current_user()
+
+    # Check user quota limits
+    quota_allowed, quota_message = users.check_quota_limits(current_user)
+    if not quota_allowed:
+        # Log failed download due to quota limit
+        logs.log_download_failed(current_user, name, infohash, f"Quota limit exceeded: {quota_message}")
+        return jsonify({"success": False, "message": quota_message}), 403
 
     # If provider_id is not specified, try to find a provider that can handle this infohash
     if not provider_id:
@@ -437,7 +503,6 @@ def route_api_download():
     print(f"[INFO] Created magnet link: {magnet} for {name} ({infohash}) using provider {provider_id}")
 
     # Ensure qBittorrent authentication is valid
-    current_user = users.get_current_user()
     if os.environ.get('disable-qb', '').lower() == 'true':
         # Log failed download due to qBittorrent being disabled
         logs.log_download_failed(current_user, name, infohash, "qBittorrent is disabled")
@@ -453,8 +518,10 @@ def route_api_download():
         print(f"[INFO] Started download for {name} ({infohash}) @ {downloadpath} response: {resp}")
 
         if resp == 'Ok.':
+            # Increment user's download count
+            users.increment_download_count(current_user)
+
             # Log successful download
-            current_user = users.get_current_user()
             logs.log_download(current_user, name, infohash, downloadpath)
             return jsonify({"success": True})
         # Log failed download due to qBittorrent error response
@@ -603,7 +670,8 @@ def route_api_logs():
             "logins": len([log for log in all_logs if log["type"] == "login"]),
             "failed_logins": len([log for log in all_logs if log["type"] == "login_failed"]),
             "user_created": len([log for log in all_logs if log["type"] == "user_created"]),
-            "user_deleted": len([log for log in all_logs if log["type"] == "user_deleted"])
+            "user_deleted": len([log for log in all_logs if log["type"] == "user_deleted"]),
+            "quota_exceeded": len([log for log in all_logs if log["type"] == "quota_exceeded"])
         }
 
         return jsonify({
