@@ -29,6 +29,7 @@ MANIFEST
 # User data and sessions
 users.json
 logs.json
+downloads.json
 settings.json
 passkeys.json
 flask_session/
