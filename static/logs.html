@@ -281,6 +281,26 @@
             logTypeDisplay = '<i class="fas fa-times-circle mr-1"></i> User Rejected';
             logTypeClass = 'text-red-500';
             break;
+          case 'role_changed':
+            logTypeDisplay = '<i class="fas fa-user-tag mr-1"></i> Role Changed';
+            logTypeClass = 'text-purple-500';
+            break;
+          case 'user_registered_with_invite':
+            logTypeDisplay = '<i class="fas fa-user-plus mr-1"></i> User Registered (Invite)';
+            logTypeClass = 'text-blue-500';
+            break;
+          case 'download_deleted':
+            logTypeDisplay = '<i class="fas fa-trash-alt mr-1"></i> Download Deleted';
+            logTypeClass = 'text-red-500';
+            break;
+          case 'invite_created':
+            logTypeDisplay = '<i class="fas fa-envelope mr-1"></i> Invite Created';
+            logTypeClass = 'text-green-500';
+            break;
+          case 'invite_deleted':
+            logTypeDisplay = '<i class="fas fa-envelope-open mr-1"></i> Invite Deleted';
+            logTypeClass = 'text-red-500';
+            break;
           default:
             logTypeDisplay = log.type;
         }
@@ -321,6 +341,32 @@
             <div><strong>Quota Type:</strong> ${log.details.quota_type.charAt(0).toUpperCase() + log.details.quota_type.slice(1)}</div>
             <div><strong>Limit:</strong> ${log.details.limit}</div>
             <div><strong>Used:</strong> ${log.details.used}</div>
+          `;
+        } else if (log.type === 'role_changed' && log.details) {
+          detailsHtml = `
+            <div><strong>User:</strong> ${log.details.target_username || 'N/A'}</div>
+            <div><strong>Old Role:</strong> ${log.details.old_role || 'N/A'}</div>
+            <div><strong>New Role:</strong> ${log.details.new_role || 'N/A'}</div>
+          `;
+        } else if (log.type === 'user_registered_with_invite' && log.details) {
+          detailsHtml = `
+            <div><strong>Invite Code:</strong> ${log.details.invite_code || 'N/A'}</div>
+            <div><strong>Created By:</strong> ${log.details.created_by || 'N/A'}</div>
+          `;
+        } else if (log.type === 'download_deleted' && log.details) {
+          detailsHtml = `
+            <div><strong>Torrent:</strong> ${log.details.torrent_name || 'N/A'}</div>
+            <div><strong>Delete Files:</strong> ${log.details.delete_files ? 'Yes' : 'No'}</div>
+          `;
+        } else if (log.type === 'invite_created' && log.details) {
+          detailsHtml = `
+            <div><strong>Invite Code:</strong> ${log.details.invite_code || 'N/A'}</div>
+            <div><strong>Expires:</strong> ${log.details.expires ? new Date(log.details.expires).toLocaleString() : 'Never'}</div>
+          `;
+        } else if (log.type === 'invite_deleted' && log.details) {
+          detailsHtml = `
+            <div><strong>Invite Code:</strong> ${log.details.invite_code || 'N/A'}</div>
+            <div><strong>Created By:</strong> ${log.details.created_by || 'N/A'}</div>
           `;
         }
 
