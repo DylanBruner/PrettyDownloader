@@ -79,21 +79,35 @@
               </div>
 
               <div class="mb-4">
-                <label for="new-daily-quota" class="block text-sm font-medium mb-2">Daily Quota</label>
-                <input type="number" id="new-daily-quota" class="form-input w-full" min="0" step="1" value="0">
-                <p class="text-xs text-gray-400 mt-1">Maximum downloads per day (0 = unlimited)</p>
-              </div>
+                <button
+                  type="button"
+                  id="toggle-quota-settings"
+                  class="flex items-center justify-between w-full p-2 bg-gray-700 rounded hover:bg-gray-600 transition-colors"
+                  onclick="toggleQuotaSettings()"
+                >
+                  <span class="font-medium">Download Quotas</span>
+                  <i class="fas fa-chevron-down" id="quota-chevron"></i>
+                </button>
 
-              <div class="mb-4">
-                <label for="new-weekly-quota" class="block text-sm font-medium mb-2">Weekly Quota</label>
-                <input type="number" id="new-weekly-quota" class="form-input w-full" min="0" step="1" value="0">
-                <p class="text-xs text-gray-400 mt-1">Maximum downloads per week (0 = unlimited)</p>
-              </div>
+                <div id="quota-settings" class="hidden mt-3 p-3 bg-gray-700 rounded">
+                  <div class="mb-4">
+                    <label for="new-daily-quota" class="block text-sm font-medium mb-2">Daily Quota</label>
+                    <input type="number" id="new-daily-quota" class="form-input w-full" min="0" step="1" value="0">
+                    <p class="text-xs text-gray-400 mt-1">Maximum downloads per day (0 = unlimited)</p>
+                  </div>
 
-              <div class="mb-6">
-                <label for="new-monthly-quota" class="block text-sm font-medium mb-2">Monthly Quota</label>
-                <input type="number" id="new-monthly-quota" class="form-input w-full" min="0" step="1" value="0">
-                <p class="text-xs text-gray-400 mt-1">Maximum downloads per month (0 = unlimited)</p>
+                  <div class="mb-4">
+                    <label for="new-weekly-quota" class="block text-sm font-medium mb-2">Weekly Quota</label>
+                    <input type="number" id="new-weekly-quota" class="form-input w-full" min="0" step="1" value="0">
+                    <p class="text-xs text-gray-400 mt-1">Maximum downloads per week (0 = unlimited)</p>
+                  </div>
+
+                  <div class="mb-2">
+                    <label for="new-monthly-quota" class="block text-sm font-medium mb-2">Monthly Quota</label>
+                    <input type="number" id="new-monthly-quota" class="form-input w-full" min="0" step="1" value="0">
+                    <p class="text-xs text-gray-400 mt-1">Maximum downloads per month (0 = unlimited)</p>
+                  </div>
+                </div>
               </div>
 
               <button type="submit" class="btn btn-primary w-full">
@@ -329,7 +343,8 @@
         usersList.innerHTML = '<div class="text-center p-8">No users found</div>';
       } else {
         let html = `
-          <div class="overflow-x-auto">
+          <!-- Desktop view: Table for larger screens -->
+          <div class="hidden md:block overflow-x-auto">
             <table class="table w-full">
               <thead>
                 <tr>
@@ -409,6 +424,94 @@
               </tbody>
             </table>
           </div>
+
+          <!-- Mobile view: Cards for smaller screens -->
+          <div class="md:hidden space-y-4">
+            ${activeUsers.map(user => `
+              <div class="bg-gray-800 rounded-lg p-4 shadow">
+                <div class="flex justify-between items-center mb-2">
+                  <h3 class="text-lg font-semibold">${user.username}</h3>
+                  <div>
+                    ${user.is_admin ?
+                      '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-900 text-green-300">Admin</span>' :
+                      ''}
+                    ${user.suspended ?
+                      '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-900 text-red-300 ml-1">Suspended</span>' :
+                      '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-900 text-green-300 ml-1">Active</span>'}
+                  </div>
+                </div>
+
+                ${!user.is_admin ? `
+                <div class="mb-3 bg-gray-700 p-2 rounded">
+                  <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-2 text-xs">
+                      <span class="text-gray-400">D:</span>
+                      <span class="${user.quotas.daily.limit > 0 ? 'text-green-500' : 'text-gray-400'}">
+                        ${user.quotas.daily.used}/${user.quotas.daily.limit || '∞'}
+                      </span>
+                      <span class="text-gray-400">W:</span>
+                      <span class="${user.quotas.weekly.limit > 0 ? 'text-green-500' : 'text-gray-400'}">
+                        ${user.quotas.weekly.used}/${user.quotas.weekly.limit || '∞'}
+                      </span>
+                      <span class="text-gray-400">M:</span>
+                      <span class="${user.quotas.monthly.limit > 0 ? 'text-green-500' : 'text-gray-400'}">
+                        ${user.quotas.monthly.used}/${user.quotas.monthly.limit || '∞'}
+                      </span>
+                    </div>
+                    <button
+                      class="text-yellow-500 hover:text-yellow-700"
+                      onclick="showQuotaModal('${user.username}')"
+                      title="Edit quotas"
+                    >
+                      <i class="fas fa-edit"></i>
+                    </button>
+                  </div>
+                </div>
+                ` : `
+                <div class="mb-3 bg-gray-700 p-2 rounded text-xs">
+                  <span class="text-gray-400">Quotas: N/A (Admin)</span>
+                </div>
+                `}
+
+                <div class="flex justify-end gap-1 mt-2">
+                  <button
+                    class="px-2 py-1 bg-blue-900 text-blue-300 rounded text-xs flex items-center"
+                    onclick="showChangePasswordModal('${user.username}')"
+                    title="Change password"
+                  >
+                    <i class="fas fa-key mr-1"></i>
+                    <span>Pass</span>
+                  </button>
+                  ${user.suspended ?
+                    `<button
+                      class="px-2 py-1 bg-green-900 text-green-300 rounded text-xs flex items-center"
+                      onclick="unsuspendUser('${user.username}')"
+                      title="Unsuspend user"
+                    >
+                      <i class="fas fa-user-check mr-1"></i>
+                      <span>Unsus</span>
+                    </button>` :
+                    `<button
+                      class="px-2 py-1 bg-yellow-900 text-yellow-300 rounded text-xs flex items-center"
+                      onclick="suspendUser('${user.username}')"
+                      title="Suspend user"
+                    >
+                      <i class="fas fa-user-slash mr-1"></i>
+                      <span>Susp</span>
+                    </button>`
+                  }
+                  <button
+                    class="px-2 py-1 bg-red-900 text-red-300 rounded text-xs flex items-center"
+                    onclick="deleteUser('${user.username}')"
+                    title="Delete user"
+                  >
+                    <i class="fas fa-trash mr-1"></i>
+                    <span>Del</span>
+                  </button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
         `;
 
         usersList.innerHTML = html;
@@ -419,7 +522,8 @@
         pendingUsersList.innerHTML = '<div class="text-center p-8">No pending registrations</div>';
       } else {
         let html = `
-          <div class="overflow-x-auto">
+          <!-- Desktop view: Table for larger screens -->
+          <div class="hidden md:block overflow-x-auto">
             <table class="table w-full">
               <thead>
                 <tr>
@@ -457,6 +561,38 @@
         html += `
               </tbody>
             </table>
+          </div>
+
+          <!-- Mobile view: Cards for smaller screens -->
+          <div class="md:hidden space-y-4">
+            ${pendingUsers.map(user => `
+              <div class="bg-gray-800 rounded-lg p-4 shadow">
+                <div class="flex justify-between items-center">
+                  <h3 class="text-lg font-semibold">${user.username}</h3>
+                  <div class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-900 text-yellow-300">
+                    Pending
+                  </div>
+                </div>
+                <div class="flex justify-end gap-1 mt-2">
+                  <button
+                    class="px-2 py-1 bg-green-900 text-green-300 rounded text-xs flex items-center"
+                    onclick="approveUser('${user.username}')"
+                    title="Approve user"
+                  >
+                    <i class="fas fa-check mr-1"></i>
+                    <span>Approve</span>
+                  </button>
+                  <button
+                    class="px-2 py-1 bg-red-900 text-red-300 rounded text-xs flex items-center"
+                    onclick="rejectUser('${user.username}')"
+                    title="Reject user"
+                  >
+                    <i class="fas fa-times mr-1"></i>
+                    <span>Reject</span>
+                  </button>
+                </div>
+              </div>
+            `).join('')}
           </div>
         `;
 
@@ -566,7 +702,7 @@
       form.setAttribute('data-username', username);
 
       // Fetch current quotas
-      fetchUserQuotas(username);
+      fetchUserQuotasForModal(username);
 
       // Show modal
       modal.classList.remove('hidden');
@@ -578,12 +714,12 @@
       modal.classList.add('hidden');
     }
 
-    // Fetch user quotas
-    async function fetchUserQuotas(username) {
+    // Fetch user quotas for the modal
+    async function fetchUserQuotasForModal(username) {
       try {
         // Make sure username is defined
         if (!username) {
-          console.error('Username is undefined in fetchUserQuotas');
+          console.error('Username is undefined in fetchUserQuotasForModal');
           return;
         }
 
@@ -764,6 +900,22 @@
 
       document.getElementById('total-users-count').textContent = totalUsers - pendingUsers;
       document.getElementById('admin-users-count').textContent = adminUsers;
+    }
+
+    // Toggle quota settings visibility in the add user form
+    function toggleQuotaSettings() {
+      const quotaSettings = document.getElementById('quota-settings');
+      const chevron = document.getElementById('quota-chevron');
+
+      if (quotaSettings.classList.contains('hidden')) {
+        quotaSettings.classList.remove('hidden');
+        chevron.classList.remove('fa-chevron-down');
+        chevron.classList.add('fa-chevron-up');
+      } else {
+        quotaSettings.classList.add('hidden');
+        chevron.classList.remove('fa-chevron-up');
+        chevron.classList.add('fa-chevron-down');
+      }
     }
   </script>
 </body>

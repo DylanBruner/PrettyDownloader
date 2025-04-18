@@ -166,6 +166,8 @@ body {
   text-align: center;
 }
 
+
+
 /* Loader */
 .loader {
   border: 3px solid var(--border-color);

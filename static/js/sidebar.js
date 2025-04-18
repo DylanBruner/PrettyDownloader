@@ -338,7 +338,8 @@ function fetchUserQuotas() {
 }
 
 // Make fetchUserQuotas available globally so it can be called from other pages
-window.refreshQuotaDisplay = fetchUserQuotas;
+window.fetchUserQuotas = fetchUserQuotas;
+window.refreshQuotaDisplay = fetchUserQuotas; // Keep this for backward compatibility
 
 /**
  * Updates the quota display with the provided quota information
