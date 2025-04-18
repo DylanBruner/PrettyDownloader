@@ -128,13 +128,22 @@
         </div>
       </div>
 
-      <div class="mb-6">
+      <div class="mb-4">
         <label for="password" class="block text-sm font-medium mb-2">Password</label>
         <div class="relative">
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <i class="fas fa-lock text-gray-500"></i>
           </div>
           <input type="password" id="password" name="password" class="w-full py-2 pl-10 pr-3 rounded-md focus:outline-none" placeholder="Enter your password" required>
+        </div>
+      </div>
+
+      <div class="mb-6">
+        <div class="flex items-center">
+          <input type="checkbox" id="remember-me" name="remember-me" class="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded">
+          <label for="remember-me" class="ml-2 block text-sm text-gray-400">
+            Keep me logged in
+          </label>
         </div>
       </div>
 
@@ -220,6 +229,9 @@
         return;
       }
 
+      // Get remember me preference
+      const rememberMe = document.getElementById('remember-me').checked;
+
       try {
         // Get authentication options from server
         const optionsResponse = await fetch('/api/passkeys/authenticate/options', {
@@ -227,7 +239,7 @@
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ username })
+          body: JSON.stringify({ username, remember_me: rememberMe })
         });
 
         const optionsData = await optionsResponse.json();
@@ -289,6 +301,21 @@
         const verifyData = await verifyResponse.json();
 
         if (verifyData.success) {
+          // Store tokens in localStorage or sessionStorage based on remember_me
+          if (rememberMe) {
+            localStorage.setItem('access_token', verifyData.access_token);
+            localStorage.setItem('refresh_token', verifyData.refresh_token);
+            localStorage.setItem('token_expires_at', verifyData.expires_at);
+            localStorage.setItem('username', verifyData.username);
+            localStorage.setItem('is_admin', verifyData.is_admin);
+          } else {
+            sessionStorage.setItem('access_token', verifyData.access_token);
+            sessionStorage.setItem('refresh_token', verifyData.refresh_token);
+            sessionStorage.setItem('token_expires_at', verifyData.expires_at);
+            sessionStorage.setItem('username', verifyData.username);
+            sessionStorage.setItem('is_admin', verifyData.is_admin);
+          }
+
           // Redirect to home page on success
           window.location.href = '/';
         } else {
@@ -307,9 +334,12 @@
         return;
       }
 
+      // Get remember me preference
+      const rememberMe = document.getElementById('remember-me').checked;
+
       try {
         // Get authentication options from server
-        const optionsResponse = await fetch('/api/passkeys/authenticate/passwordless/options');
+        const optionsResponse = await fetch(`/api/passkeys/authenticate/passwordless/options?remember_me=${rememberMe}`);
         const optionsData = await optionsResponse.json();
 
         if (!optionsData.success) {
@@ -369,6 +399,21 @@
         const verifyData = await verifyResponse.json();
 
         if (verifyData.success) {
+          // Store tokens in localStorage or sessionStorage based on remember_me
+          if (rememberMe) {
+            localStorage.setItem('access_token', verifyData.access_token);
+            localStorage.setItem('refresh_token', verifyData.refresh_token);
+            localStorage.setItem('token_expires_at', verifyData.expires_at);
+            localStorage.setItem('username', verifyData.username);
+            localStorage.setItem('is_admin', verifyData.is_admin);
+          } else {
+            sessionStorage.setItem('access_token', verifyData.access_token);
+            sessionStorage.setItem('refresh_token', verifyData.refresh_token);
+            sessionStorage.setItem('token_expires_at', verifyData.expires_at);
+            sessionStorage.setItem('username', verifyData.username);
+            sessionStorage.setItem('is_admin', verifyData.is_admin);
+          }
+
           // Redirect to home page on success
           window.location.href = '/';
         } else {
@@ -433,6 +478,10 @@
         console.log('Auto-prompt for passkeys is disabled');
         return;
       }
+
+      // Default to remember_me = true for auto-prompt
+      // This ensures a better user experience when using passkeys automatically
+      document.getElementById('remember-me').checked = true;
 
       console.log('Auto-prompting for passkeys...');
       try {

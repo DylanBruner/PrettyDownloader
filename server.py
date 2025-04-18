@@ -16,6 +16,7 @@ import libs.users as users
 import libs.logs as logs
 import libs.settings as settings
 import libs.passkeys as passkeys
+import libs.tokens as tokens
 
 # Custom JSON encoder to handle bytes objects
 class BytesEncoder(json.JSONEncoder):
@@ -122,6 +123,8 @@ try:
     settings.init_settings_db()
     # Apply settings from .env and overrides
     settings.apply_settings_to_env()
+    # Initialize token settings
+    tokens.get_token_settings()
 except Exception as e:
     print(f"[ERROR] Failed to initialize settings database: {e}")
 
@@ -238,15 +241,27 @@ def route_static(path):
 def route_api_login():
     username = request.json.get("username")
     password = request.json.get("password")
+    remember_me = request.json.get("remember_me", False)
 
     if not username or not password:
         return jsonify({"success": False, "message": "Username and password are required"})
 
     if users.verify_user(username, password):
-        users.login_user(username)
+        # Generate tokens and login user
+        auth_data = users.login_user(username, remember_me)
+
         # Log successful login
         logs.log_login_attempt(username, True)
-        return jsonify({"success": True})
+
+        # Return tokens and user info
+        return jsonify({
+            "success": True,
+            "access_token": auth_data["access_token"],
+            "refresh_token": auth_data["refresh_token"],
+            "expires_at": auth_data["expires_at"],
+            "username": auth_data["username"],
+            "is_admin": auth_data["is_admin"]
+        })
 
     # Log failed login
     logs.log_login_attempt(username, False)
@@ -264,9 +279,34 @@ def route_api_auth_status():
         "is_admin": is_admin
     })
 
+@app.route("/api/auth/refresh", methods=["POST"])
+def route_api_auth_refresh():
+    refresh_token = request.json.get("refresh_token")
+
+    if not refresh_token:
+        return jsonify({"success": False, "message": "Refresh token is required"}), 400
+
+    # Generate new access token
+    access_token, error = tokens.refresh_access_token(refresh_token)
+
+    if error:
+        return jsonify({"success": False, "message": error}), 401
+
+    # Get user info
+    username, _ = tokens.validate_refresh_token(refresh_token)
+    is_admin = users.is_user_admin(username)
+
+    return jsonify({
+        "success": True,
+        "access_token": access_token,
+        "username": username,
+        "is_admin": is_admin
+    })
+
 @app.route("/api/auth/logout", methods=["POST"])
 def route_api_auth_logout():
-    users.logout_user()
+    refresh_token = request.json.get("refresh_token")
+    users.logout_user(refresh_token)
     return jsonify({"success": True})
 
 # User management API routes
@@ -710,6 +750,11 @@ def route_api_settings_update():
             if any(key in new_settings for key in ['RP_ID', 'RP_NAME', 'RP_ORIGIN']):
                 print(f"[INFO] WebAuthn configuration updated: RP_ID={os.environ.get('RP_ID')}, RP_NAME={os.environ.get('RP_NAME')}, RP_ORIGIN={os.environ.get('RP_ORIGIN')}")
 
+            # Refresh token settings if token-related settings changed
+            if any(key in new_settings for key in ['ACCESS_TOKEN_EXPIRY', 'REFRESH_TOKEN_EXPIRY', 'SHORT_REFRESH_TOKEN_EXPIRY']):
+                tokens.get_token_settings()
+                print(f"[INFO] Token settings refreshed")
+
         return jsonify({
             "success": success,
             "message": "Settings updated successfully" if success else "Failed to update settings"
@@ -735,6 +780,10 @@ def route_api_settings_reset():
             qbclient = None
             if not os.environ.get('disable-qb', '').lower() == 'true':
                 ensure_qb_auth()
+
+            # Refresh token settings
+            tokens.get_token_settings()
+            print(f"[INFO] Token settings reset to defaults")
 
         return jsonify({
             "success": success,
@@ -814,9 +863,13 @@ def route_api_passkeys_register_verify():
 def route_api_passkeys_authenticate_options():
     try:
         username = request.json.get("username")
+        remember_me = request.json.get("remember_me", False)
 
         if not username:
             return jsonify({"success": False, "message": "Username is required"}), 400
+
+        # Store remember_me preference in session for later use during verification
+        session['remember_me'] = remember_me
 
         options, error = passkeys.generate_passkey_authentication_options(username)
 
@@ -835,6 +888,11 @@ def route_api_passkeys_authenticate_options():
 def route_api_passkeys_authenticate_passwordless_options():
     try:
         print(f"[INFO] Generating passwordless authentication options")
+        remember_me = request.args.get("remember_me", "false").lower() == "true"
+
+        # Store remember_me preference in session for later use during verification
+        session['remember_me'] = remember_me
+
         options, error = passkeys.generate_passwordless_authentication_options()
 
         if error:
@@ -856,12 +914,23 @@ def route_api_passkeys_authenticate_verify():
         if not credential_data:
             return jsonify({"success": False, "message": "Credential data is required"}), 400
 
-        success, message = passkeys.verify_passkey_authentication(credential_data)
+        success, message, auth_data = passkeys.verify_passkey_authentication(credential_data)
 
-        return jsonify({
-            "success": success,
-            "message": message
-        })
+        if success:
+            return jsonify({
+                "success": success,
+                "message": message,
+                "access_token": auth_data["access_token"],
+                "refresh_token": auth_data["refresh_token"],
+                "expires_at": auth_data["expires_at"],
+                "username": auth_data["username"],
+                "is_admin": auth_data["is_admin"]
+            })
+        else:
+            return jsonify({
+                "success": success,
+                "message": message
+            })
     except Exception as e:
         print(f"[ERROR] Failed to verify passkey authentication: {str(e)}")
         return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500

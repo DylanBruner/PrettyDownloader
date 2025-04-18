@@ -16,6 +16,7 @@ from webauthn.helpers.structs import (
 )
 from webauthn.helpers import bytes_to_base64url, base64url_to_bytes
 import libs.users as users
+import libs.tokens as tokens
 
 # Path to the passkeys database file
 PASSKEYS_DB_PATH = os.environ.get('PASSKEYS_DB_PATH', 'passkeys.json')
@@ -356,10 +357,12 @@ def verify_passkey_authentication(credential_data):
         passkey['last_used'] = int(time.time())
         save_passkeys(passkeys_data)
 
-        # Log the user in
-        users.login_user(username)
+        # Log the user in and generate tokens
+        # Check if remember_me was set in session
+        remember_me = session.pop('remember_me', False)
+        auth_data = users.login_user(username, remember_me)
 
-        return True, "Authentication successful"
+        return True, "Authentication successful", auth_data
     except Exception as e:
         print(f"[ERROR] Failed to verify passkey authentication: {e}")
         return False, f"Failed to verify passkey authentication: {str(e)}"

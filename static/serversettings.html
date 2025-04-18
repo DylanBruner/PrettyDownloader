@@ -188,6 +188,33 @@
           </div>
 
           <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Authentication Tokens</h3>
+            <p class="text-sm text-gray-400 mb-4">
+              These settings control the behavior of authentication tokens used for the "Keep me logged in" feature.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label for="ACCESS_TOKEN_EXPIRY" class="block text-sm font-medium mb-2">Access Token Expiry (seconds)</label>
+                <input type="number" id="ACCESS_TOKEN_EXPIRY" name="ACCESS_TOKEN_EXPIRY" class="form-input w-full" min="60" step="60">
+                <p class="text-xs text-gray-400 mt-1">How long access tokens are valid (default: 900 seconds / 15 minutes)</p>
+              </div>
+
+              <div>
+                <label for="REFRESH_TOKEN_EXPIRY" class="block text-sm font-medium mb-2">Long-term Refresh Token Expiry (seconds)</label>
+                <input type="number" id="REFRESH_TOKEN_EXPIRY" name="REFRESH_TOKEN_EXPIRY" class="form-input w-full" min="3600" step="3600">
+                <p class="text-xs text-gray-400 mt-1">How long refresh tokens are valid when "Keep me logged in" is checked (default: 2,592,000 seconds / 30 days)</p>
+              </div>
+
+              <div>
+                <label for="SHORT_REFRESH_TOKEN_EXPIRY" class="block text-sm font-medium mb-2">Short-term Refresh Token Expiry (seconds)</label>
+                <input type="number" id="SHORT_REFRESH_TOKEN_EXPIRY" name="SHORT_REFRESH_TOKEN_EXPIRY" class="form-input w-full" min="3600" step="3600">
+                <p class="text-xs text-gray-400 mt-1">How long refresh tokens are valid when "Keep me logged in" is not checked (default: 86,400 seconds / 1 day)</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-6">
             <h3 class="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">Content Filtering</h3>
             <p class="text-sm text-gray-400 mb-4">
               These settings control what content is filtered from search results.
@@ -316,6 +343,11 @@
           document.getElementById('RP_ORIGIN').value = data.settings['RP_ORIGIN'] || 'http://localhost';
           document.getElementById('auto-prompt-passkeys').checked = data.settings['auto-prompt-passkeys'] !== false; // Default to true
 
+          // Authentication token settings
+          document.getElementById('ACCESS_TOKEN_EXPIRY').value = data.settings['ACCESS_TOKEN_EXPIRY'] || 900; // 15 minutes
+          document.getElementById('REFRESH_TOKEN_EXPIRY').value = data.settings['REFRESH_TOKEN_EXPIRY'] || 2592000; // 30 days
+          document.getElementById('SHORT_REFRESH_TOKEN_EXPIRY').value = data.settings['SHORT_REFRESH_TOKEN_EXPIRY'] || 86400; // 1 day
+
           // Content filtering settings
           document.getElementById('hide-adult-content').checked = data.settings['hide-adult-content'] !== false; // Default to true
 
@@ -441,6 +473,11 @@
         'RP_NAME': document.getElementById('RP_NAME').value,
         'RP_ORIGIN': document.getElementById('RP_ORIGIN').value,
         'auto-prompt-passkeys': document.getElementById('auto-prompt-passkeys').checked,
+
+        // Authentication token settings
+        'ACCESS_TOKEN_EXPIRY': parseInt(document.getElementById('ACCESS_TOKEN_EXPIRY').value) || 900,
+        'REFRESH_TOKEN_EXPIRY': parseInt(document.getElementById('REFRESH_TOKEN_EXPIRY').value) || 2592000,
+        'SHORT_REFRESH_TOKEN_EXPIRY': parseInt(document.getElementById('SHORT_REFRESH_TOKEN_EXPIRY').value) || 86400,
 
         // Content filtering settings
         'hide-adult-content': document.getElementById('hide-adult-content').checked

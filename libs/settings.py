@@ -42,6 +42,11 @@ def get_settings_from_env():
         # Content filtering settings
         "hide-adult-content": os.environ.get("hide-adult-content", "true").lower() == "true",
 
+        # Authentication token settings
+        "ACCESS_TOKEN_EXPIRY": int(os.environ.get("ACCESS_TOKEN_EXPIRY", 15 * 60)),  # 15 minutes in seconds
+        "REFRESH_TOKEN_EXPIRY": int(os.environ.get("REFRESH_TOKEN_EXPIRY", 30 * 24 * 60 * 60)),  # 30 days in seconds
+        "SHORT_REFRESH_TOKEN_EXPIRY": int(os.environ.get("SHORT_REFRESH_TOKEN_EXPIRY", 24 * 60 * 60)),  # 1 day in seconds
+
         # Provider settings
         "providers": {}
     }

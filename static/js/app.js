@@ -112,6 +112,56 @@ document.addEventListener('DOMContentLoaded', () => {
 // Check if user is authenticated
 async function checkAuthStatus() {
   try {
+    // First check if we have tokens in storage
+    const accessToken = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+    const refreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token');
+    const expiresAt = localStorage.getItem('token_expires_at') || sessionStorage.getItem('token_expires_at');
+
+    // If we have tokens, check if access token is expired
+    if (accessToken && refreshToken) {
+      const now = Math.floor(Date.now() / 1000);
+
+      // If access token is expired, try to refresh it
+      if (expiresAt && now > expiresAt) {
+        console.log('Access token expired, refreshing...');
+        const refreshed = await refreshAccessToken(refreshToken);
+
+        if (!refreshed) {
+          // If refresh failed, clear tokens and redirect to login
+          clearAuthTokens();
+          if (!window.location.pathname.includes('/login')) {
+            window.location.href = '/login';
+          }
+          return;
+        }
+      }
+
+      // Use the token to get user info
+      const headers = {
+        'Authorization': `Bearer ${accessToken}`
+      };
+
+      const response = await fetch('/api/auth/status', { headers });
+      const data = await response.json();
+
+      if (data.authenticated) {
+        currentUser = data.username;
+        isAdmin = data.is_admin;
+
+        // Update UI based on auth status
+        updateAuthUI(true);
+
+        // Show admin-only elements if user is admin
+        if (isAdmin) {
+          document.querySelectorAll('.admin-only').forEach(el => {
+            el.classList.remove('hidden');
+          });
+        }
+        return;
+      }
+    }
+
+    // If no tokens or token validation failed, check session-based auth as fallback
     const response = await fetch('/api/auth/status');
     const data = await response.json();
 
@@ -137,7 +187,63 @@ async function checkAuthStatus() {
   } catch (error) {
     console.error('Error checking auth status:', error);
     showToast('Error checking authentication status', 'error');
+
+    // On error, clear tokens and redirect to login if not already there
+    clearAuthTokens();
+    if (!window.location.pathname.includes('/login')) {
+      window.location.href = '/login';
+    }
   }
+}
+
+// Refresh the access token using the refresh token
+async function refreshAccessToken(refreshToken) {
+  try {
+    const response = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ refresh_token: refreshToken })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      // Update the access token in storage
+      if (localStorage.getItem('refresh_token')) {
+        localStorage.setItem('access_token', data.access_token);
+        localStorage.setItem('username', data.username);
+        localStorage.setItem('is_admin', data.is_admin);
+      } else {
+        sessionStorage.setItem('access_token', data.access_token);
+        sessionStorage.setItem('username', data.username);
+        sessionStorage.setItem('is_admin', data.is_admin);
+      }
+
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    console.error('Error refreshing token:', error);
+    return false;
+  }
+}
+
+// Clear authentication tokens from storage
+function clearAuthTokens() {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('token_expires_at');
+  localStorage.removeItem('username');
+  localStorage.removeItem('is_admin');
+
+  sessionStorage.removeItem('access_token');
+  sessionStorage.removeItem('refresh_token');
+  sessionStorage.removeItem('token_expires_at');
+  sessionStorage.removeItem('username');
+  sessionStorage.removeItem('is_admin');
 }
 
 // Update UI based on authentication status
@@ -299,11 +405,21 @@ const closeMobileMenu = window.closeMobileMenu;
 // Handle logout
 async function handleLogout() {
   try {
+    // Get refresh token from storage
+    const refreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token');
+
+    // Clear tokens from storage
+    clearAuthTokens();
+
+    // Call logout API to invalidate the token on the server
     const response = await fetch('/api/auth/logout', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
-      }
+      },
+      body: JSON.stringify({
+        refresh_token: refreshToken
+      })
     });
 
     if (response.ok) {
@@ -311,10 +427,14 @@ async function handleLogout() {
       window.location.href = '/login';
     } else {
       showToast('Logout failed', 'error');
+      // Still redirect to login page even if server-side logout fails
+      window.location.href = '/login';
     }
   } catch (error) {
     console.error('Error during logout:', error);
     showToast('Error during logout', 'error');
+    // Still redirect to login page on error
+    window.location.href = '/login';
   }
 }
 
@@ -2037,6 +2157,7 @@ function initLoginPage() {
 
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value.trim();
+      const rememberMe = document.getElementById('remember-me').checked;
 
       if (!username || !password) {
         showToast('Username and password are required', 'warning');
@@ -2051,13 +2172,29 @@ function initLoginPage() {
           },
           body: JSON.stringify({
             username: username,
-            password: password
+            password: password,
+            remember_me: rememberMe
           })
         });
 
         const data = await response.json();
 
         if (data.success) {
+          // Store tokens in localStorage or sessionStorage based on remember_me
+          if (rememberMe) {
+            localStorage.setItem('access_token', data.access_token);
+            localStorage.setItem('refresh_token', data.refresh_token);
+            localStorage.setItem('token_expires_at', data.expires_at);
+            localStorage.setItem('username', data.username);
+            localStorage.setItem('is_admin', data.is_admin);
+          } else {
+            sessionStorage.setItem('access_token', data.access_token);
+            sessionStorage.setItem('refresh_token', data.refresh_token);
+            sessionStorage.setItem('token_expires_at', data.expires_at);
+            sessionStorage.setItem('username', data.username);
+            sessionStorage.setItem('is_admin', data.is_admin);
+          }
+
           // Redirect to home page
           window.location.href = '/';
         } else {

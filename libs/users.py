@@ -2,6 +2,7 @@ import os
 import json
 import bcrypt
 from flask import session
+import libs.tokens as tokens
 
 # Path to the users database file
 USERS_DB_PATH = os.environ.get('USERS_DB_PATH', 'users.json')
@@ -77,40 +78,93 @@ def verify_user(username, password):
 
 def is_authenticated():
     """Check if the current user is authenticated"""
-    return 'username' in session
+    # First check session-based authentication (for backward compatibility)
+    if 'username' in session:
+        return True
 
-def login_user(username):
-    """Log in a user by setting session data"""
+    # Then check token-based authentication
+    token = tokens.get_token_from_header()
+    if token:
+        payload, error = tokens.validate_access_token(token)
+        return payload is not None
+
+    return False
+
+def login_user(username, remember_me=False):
+    """Log in a user by setting session data and generating tokens"""
+    # Set session data (for backward compatibility)
     session['username'] = username
 
-def logout_user():
-    """Log out the current user by clearing session data"""
+    # Generate tokens
+    is_admin_user = is_user_admin(username)
+    access_token = tokens.generate_access_token(username, is_admin_user)
+    refresh_token, expires_at = tokens.generate_refresh_token(username, remember_me)
+
+    return {
+        'access_token': access_token,
+        'refresh_token': refresh_token,
+        'expires_at': expires_at,
+        'username': username,
+        'is_admin': is_admin_user
+    }
+
+def logout_user(refresh_token=None):
+    """Log out the current user by clearing session data and revoking tokens"""
+    # Clear session data
     session.pop('username', None)
+
+    # Revoke refresh token if provided
+    if refresh_token:
+        tokens.revoke_refresh_token(refresh_token)
 
 def get_current_user():
     """Get the current logged-in username"""
-    return session.get('username', None)
+    # First check session-based authentication
+    username = session.get('username')
+    if username:
+        return username
+
+    # Then check token-based authentication
+    token = tokens.get_token_from_header()
+    if token:
+        payload, error = tokens.validate_access_token(token)
+        if payload:
+            return payload.get('username')
+
+    return None
+
+def is_user_admin(username):
+    """Check if a specific user is an admin"""
+    users_data = get_users()
+
+    for user in users_data['users']:
+        if user['username'] == username:
+            return user.get('is_admin', False)
+
+    return False
 
 def is_admin(username=None):
     """Check if a user is an admin"""
     print(f"[INFO] Checking if user is admin: {username}")
     if username is None:
+        # First check session-based authentication
         username = get_current_user()
         print(f"[INFO] Using current user: {username}")
         if not username:
             print("[INFO] No current user, not admin")
             return False
 
-    users_data = get_users()
+        # If using token-based authentication, check the token payload directly
+        token = tokens.get_token_from_header()
+        if token:
+            payload, _ = tokens.validate_access_token(token)
+            if payload and 'is_admin' in payload:
+                is_admin_value = payload['is_admin']
+                print(f"[INFO] User from token is_admin: {is_admin_value}")
+                return is_admin_value
 
-    for user in users_data['users']:
-        if user['username'] == username:
-            is_admin_value = user.get('is_admin', False)
-            print(f"[INFO] User {username} is_admin: {is_admin_value}")
-            return is_admin_value
-
-    print(f"[INFO] User {username} not found, not admin")
-    return False
+    # Fall back to database check
+    return is_user_admin(username)
 
 def get_all_users():
     """Get all users with their information (except passwords)"""
