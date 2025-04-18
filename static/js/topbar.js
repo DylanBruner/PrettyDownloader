@@ -24,6 +24,9 @@ function initTopbar() {
     case '/logs':
       pageTitle = 'Logs';
       break;
+    case '/dashboard':
+      pageTitle = 'User Activity Dashboard';
+      break;
     case '/serversettings':
       pageTitle = 'Server Settings';
       break;

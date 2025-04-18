@@ -158,6 +158,12 @@ function createSidebar(isAdmin, currentPath) {
             </a>
           </li>
           <li>
+            <a href="/dashboard" class="sidebar-link flex items-center p-2 rounded-md hover:bg-gray-800 ${currentPath === '/dashboard' ? 'active bg-gray-800' : ''}">
+              <i class="fas fa-chart-line w-6"></i>
+              <span>Dashboard</span>
+            </a>
+          </li>
+          <li>
             <a href="/logs" class="sidebar-link flex items-center p-2 rounded-md hover:bg-gray-800 ${currentPath === '/logs' ? 'active bg-gray-800' : ''}">
               <i class="fas fa-list w-6"></i>
               <span>Logs</span>

@@ -3,6 +3,7 @@ import secrets
 import requests
 import json
 import base64
+import datetime
 from flask import Flask, request, redirect, jsonify, session, Response
 from flask_session import Session
 from dotenv import load_dotenv
@@ -209,6 +210,14 @@ def route_logs():
         return redirect("/")
 
     with open("static/logs.html", "r") as f:
+        return f.read()
+
+@app.route("/dashboard")
+@auth_required
+@admin_required
+def route_dashboard():
+    """Route for the user activity dashboard"""
+    with open("static/dashboard.html", "r") as f:
         return f.read()
 
 @app.route("/settings")
@@ -765,6 +774,252 @@ def route_api_logs():
         })
     except Exception as e:
         print(f"[ERROR] Failed to fetch logs: {str(e)}")
+        return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
+
+@app.route('/api/dashboard/stats', methods=["GET"])
+@auth_required
+@admin_required
+def route_api_dashboard_stats():
+    """Get dashboard statistics"""
+    try:
+        # Get all users
+        all_users = users.get_all_users()
+        user_count = len(all_users)
+        admin_count = sum(1 for user in all_users if user.get('is_admin', False))
+
+        # Get all logs
+        all_logs = logs.get_logs()["logs"]
+
+        # Get all downloads
+        all_downloads = downloads.get_all_downloads()
+
+        # Calculate download stats
+        download_count = len([log for log in all_logs if log["type"] == "download"])
+        failed_download_count = len([log for log in all_logs if log["type"] == "download_failed"])
+
+        # Calculate login stats
+        login_count = len([log for log in all_logs if log["type"] == "login"])
+        failed_login_count = len([log for log in all_logs if log["type"] == "login_failed"])
+
+        # Get recent activity (last 24 hours)
+        now = datetime.datetime.now()
+        day_ago = now - datetime.timedelta(days=1)
+        day_ago_iso = day_ago.isoformat()
+
+        recent_logs = [log for log in all_logs if log["timestamp"] > day_ago_iso]
+        recent_downloads = [log for log in recent_logs if log["type"] == "download"]
+        recent_logins = [log for log in recent_logs if log["type"] == "login"]
+
+        # Get active users (users with activity in the last 7 days)
+        week_ago = now - datetime.timedelta(days=7)
+        week_ago_iso = week_ago.isoformat()
+
+        active_users = set()
+        for log in all_logs:
+            if log["timestamp"] > week_ago_iso:
+                active_users.add(log["username"])
+
+        # Calculate quota usage
+        quota_stats = []
+        for user in all_users:
+            username = user['username']
+            quotas = user.get('quotas', {})
+
+            # Skip users without quotas
+            if not quotas:
+                continue
+
+            daily = quotas.get('daily', {})
+            weekly = quotas.get('weekly', {})
+            monthly = quotas.get('monthly', {})
+
+            # Only include users with quotas set
+            if daily.get('limit', 0) > 0 or weekly.get('limit', 0) > 0 or monthly.get('limit', 0) > 0:
+                quota_stats.append({
+                    'username': username,
+                    'daily': {
+                        'used': daily.get('used', 0),
+                        'limit': daily.get('limit', 0),
+                        'percent': round(daily.get('used', 0) / daily.get('limit', 1) * 100) if daily.get('limit', 0) > 0 else 0
+                    },
+                    'weekly': {
+                        'used': weekly.get('used', 0),
+                        'limit': weekly.get('limit', 0),
+                        'percent': round(weekly.get('used', 0) / weekly.get('limit', 1) * 100) if weekly.get('limit', 0) > 0 else 0
+                    },
+                    'monthly': {
+                        'used': monthly.get('used', 0),
+                        'limit': monthly.get('limit', 0),
+                        'percent': round(monthly.get('used', 0) / monthly.get('limit', 1) * 100) if monthly.get('limit', 0) > 0 else 0
+                    }
+                })
+
+        # Get download distribution by user
+        user_downloads = {}
+        for download in all_downloads:
+            username = download['username']
+            if username not in user_downloads:
+                user_downloads[username] = 0
+            user_downloads[username] += 1
+
+        # Convert to list for easier consumption by frontend
+        download_distribution = [{'username': username, 'count': count} for username, count in user_downloads.items()]
+        download_distribution.sort(key=lambda x: x['count'], reverse=True)
+
+        # Get recent downloads (last 10)
+        recent_download_logs = [log for log in all_logs if log["type"] == "download"][:10]
+
+        return jsonify({
+            "success": True,
+            "stats": {
+                "users": {
+                    "total": user_count,
+                    "admins": admin_count,
+                    "regular": user_count - admin_count,
+                    "active": len(active_users)
+                },
+                "downloads": {
+                    "total": download_count,
+                    "failed": failed_download_count,
+                    "recent": len(recent_downloads),
+                    "distribution": download_distribution
+                },
+                "logins": {
+                    "total": login_count,
+                    "failed": failed_login_count,
+                    "recent": len(recent_logins)
+                },
+                "quotas": quota_stats,
+                "recent_activity": recent_download_logs
+            }
+        })
+    except Exception as e:
+        print(f"[ERROR] Failed to fetch dashboard stats: {str(e)}")
+        return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
+
+@app.route('/api/dashboard/activity', methods=["GET"])
+@auth_required
+@admin_required
+def route_api_dashboard_activity():
+    """Get user activity data for charts"""
+    try:
+        # Get time range from request (default to 7 days)
+        days = request.args.get("days", 7, type=int)
+
+        # Calculate date range
+        now = datetime.datetime.now()
+        start_date = now - datetime.timedelta(days=days)
+        start_date_iso = start_date.isoformat()
+
+        # Get all logs in the date range
+        all_logs = logs.get_logs()["logs"]
+        filtered_logs = [log for log in all_logs if log["timestamp"] > start_date_iso]
+
+        # Group logs by day and type
+        activity_by_day = {}
+
+        for log in filtered_logs:
+            # Parse timestamp and get date string (YYYY-MM-DD)
+            log_date = datetime.datetime.fromisoformat(log["timestamp"]).strftime("%Y-%m-%d")
+            log_type = log["type"]
+
+            # Initialize day if not exists
+            if log_date not in activity_by_day:
+                activity_by_day[log_date] = {
+                    "downloads": 0,
+                    "logins": 0,
+                    "failed_downloads": 0,
+                    "failed_logins": 0,
+                    "quota_exceeded": 0
+                }
+
+            # Increment counter for the log type
+            if log_type == "download":
+                activity_by_day[log_date]["downloads"] += 1
+            elif log_type == "login":
+                activity_by_day[log_date]["logins"] += 1
+            elif log_type == "download_failed":
+                activity_by_day[log_date]["failed_downloads"] += 1
+            elif log_type == "login_failed":
+                activity_by_day[log_date]["failed_logins"] += 1
+            elif log_type == "quota_exceeded":
+                activity_by_day[log_date]["quota_exceeded"] += 1
+
+        # Ensure all days in the range have entries (fill gaps)
+        date_list = []
+        current_date = start_date
+        while current_date <= now:
+            date_str = current_date.strftime("%Y-%m-%d")
+            date_list.append(date_str)
+
+            # Initialize if not exists
+            if date_str not in activity_by_day:
+                activity_by_day[date_str] = {
+                    "downloads": 0,
+                    "logins": 0,
+                    "failed_downloads": 0,
+                    "failed_logins": 0,
+                    "quota_exceeded": 0
+                }
+
+            current_date += datetime.timedelta(days=1)
+
+        # Convert to list format for charts
+        activity_data = []
+        for date_str in sorted(date_list):
+            activity_data.append({
+                "date": date_str,
+                **activity_by_day[date_str]
+            })
+
+        # Get user activity breakdown
+        user_activity = {}
+        for log in filtered_logs:
+            username = log["username"]
+            log_type = log["type"]
+
+            # Initialize user if not exists
+            if username not in user_activity:
+                user_activity[username] = {
+                    "downloads": 0,
+                    "logins": 0,
+                    "failed_downloads": 0,
+                    "failed_logins": 0,
+                    "quota_exceeded": 0,
+                    "total": 0
+                }
+
+            # Increment counter for the log type
+            if log_type == "download":
+                user_activity[username]["downloads"] += 1
+            elif log_type == "login":
+                user_activity[username]["logins"] += 1
+            elif log_type == "download_failed":
+                user_activity[username]["failed_downloads"] += 1
+            elif log_type == "login_failed":
+                user_activity[username]["failed_logins"] += 1
+            elif log_type == "quota_exceeded":
+                user_activity[username]["quota_exceeded"] += 1
+
+            user_activity[username]["total"] += 1
+
+        # Convert to list and sort by total activity
+        user_activity_list = [{
+            "username": username,
+            **activity
+        } for username, activity in user_activity.items()]
+
+        user_activity_list.sort(key=lambda x: x["total"], reverse=True)
+
+        return jsonify({
+            "success": True,
+            "activity": {
+                "by_day": activity_data,
+                "by_user": user_activity_list
+            }
+        })
+    except Exception as e:
+        print(f"[ERROR] Failed to fetch activity data: {str(e)}")
         return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
 
 # Settings API routes
