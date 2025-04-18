@@ -130,14 +130,7 @@
       document.getElementById('in-progress-count').textContent = inProgressCount;
     }
 
-    // Override display downloads function to update stats
-    const originalDisplayDownloads = displayDownloads;
-    displayDownloads = function(downloads) {
-      originalDisplayDownloads(downloads);
-      updateDownloadStats(downloads);
-    };
-
-    // Auto-refresh downloads every 10 seconds
+    // Auto-refresh downloads every 10 seconds with smooth updates
     setInterval(fetchDownloads, 10000);
   </script>
 </body>

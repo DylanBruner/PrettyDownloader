@@ -1665,8 +1665,14 @@ function initDownloadsPage() {
 // Fetch downloads
 async function fetchDownloads() {
   try {
-    // Show loading state
-    downloadsList.innerHTML = '<div class="flex justify-center p-8"><div class="loader"></div></div>';
+    // Only show loading state if the list is empty
+    const isEmpty = downloadsList.innerHTML.trim() === '' ||
+                   downloadsList.innerHTML.includes('No active downloads') ||
+                   downloadsList.innerHTML.includes('loader');
+
+    if (isEmpty) {
+      downloadsList.innerHTML = '<div class="flex justify-center p-8"><div class="loader"></div></div>';
+    }
 
     const response = await fetch('/api/fetch');
     const data = await response.json();
@@ -1683,15 +1689,28 @@ async function fetchDownloads() {
     }
 
     // Display downloads
-    displayDownloads(data);
+    updateDownloadsDisplay(data);
   } catch (error) {
     console.error('Error fetching downloads:', error);
-    downloadsList.innerHTML = '<div class="text-center p-8 text-red-500">Error fetching downloads. Please try again.</div>';
+    // Only update error message if there's a real error, don't flash
+    if (!downloadsList.querySelector('table')) {
+      downloadsList.innerHTML = '<div class="text-center p-8 text-red-500">Error fetching downloads. Please try again.</div>';
+    }
   }
 }
 
-// Display downloads
+// Original display downloads function (kept for compatibility)
 function displayDownloads(downloads) {
+  updateDownloadsDisplay(downloads);
+}
+
+// Update downloads display without flashing
+function updateDownloadsDisplay(downloads) {
+  // Update stats first
+  if (typeof updateDownloadStats === 'function') {
+    updateDownloadStats(downloads);
+  }
+
   if (!downloads || downloads.length === 0) {
     downloadsList.innerHTML = '<div class="text-center p-8">No active downloads</div>';
     return;
@@ -1700,30 +1719,138 @@ function displayDownloads(downloads) {
   // Check if we have username information (admin view)
   const showUserColumn = downloads.some(download => 'username' in download);
 
-  let html = `
-    <div class="overflow-x-auto">
-      <table class="table w-full">
-        <thead>
-          <tr>
-            <th>Name</th>
-            ${showUserColumn ? '<th>User</th>' : ''}
-            <th>Size</th>
-            <th>Progress</th>
-            <th>Status</th>
-            <th>Speed</th>
-            <th>ETA</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-  `;
+  // Check if we already have a table
+  const existingTable = downloadsList.querySelector('table');
 
+  if (!existingTable) {
+    // Create the table structure if it doesn't exist
+    let html = `
+      <div class="overflow-x-auto">
+        <table class="table w-full" id="downloads-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              ${showUserColumn ? '<th>User</th>' : ''}
+              <th>Size</th>
+              <th>Progress</th>
+              <th>Status</th>
+              <th>Speed</th>
+              <th>ETA</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="downloads-table-body">
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    downloadsList.innerHTML = html;
+  } else {
+    // Update the thead if needed (in case admin status changed)
+    const thead = existingTable.querySelector('thead');
+    if (thead) {
+      const headerRow = thead.querySelector('tr');
+      if (headerRow) {
+        // Check if we need to add/remove the User column
+        const hasUserColumn = headerRow.innerHTML.includes('<th>User</th>');
+
+        if (showUserColumn && !hasUserColumn) {
+          // Need to add User column
+          const nameCell = headerRow.querySelector('th:first-child');
+          if (nameCell) {
+            const userCell = document.createElement('th');
+            userCell.textContent = 'User';
+            headerRow.insertBefore(userCell, nameCell.nextSibling);
+          }
+        } else if (!showUserColumn && hasUserColumn) {
+          // Need to remove User column
+          const userCell = headerRow.querySelector('th:nth-child(2)');
+          if (userCell && userCell.textContent === 'User') {
+            headerRow.removeChild(userCell);
+          }
+        }
+      }
+    }
+  }
+
+  // Get the table body
+  const tableBody = downloadsList.querySelector('#downloads-table-body') ||
+                    downloadsList.querySelector('tbody');
+
+  if (!tableBody) return;
+
+  // Create a map of existing rows by hash
+  const existingRows = {};
+  Array.from(tableBody.querySelectorAll('tr')).forEach(row => {
+    const hash = row.getAttribute('data-hash');
+    if (hash) existingRows[hash] = row;
+  });
+
+  // Track which hashes we've updated
+  const updatedHashes = new Set();
+
+  // Update or add rows
   downloads.forEach(download => {
     const progress = Math.round(download.progress * 100);
     const status = download.state.charAt(0).toUpperCase() + download.state.slice(1);
+    updatedHashes.add(download.hash);
 
-    html += `
-      <tr>
+    if (existingRows[download.hash]) {
+      // Update existing row
+      const row = existingRows[download.hash];
+
+      // Update cells
+      const cells = row.querySelectorAll('td');
+      let cellIndex = 0;
+
+      // Name
+      cells[cellIndex].setAttribute('title', download.name);
+      cells[cellIndex].textContent = download.name;
+      cellIndex++;
+
+      // User (if shown)
+      if (showUserColumn) {
+        if (cells[cellIndex].querySelector('span')) {
+          cells[cellIndex].querySelector('span').textContent = download.username || 'Unknown';
+        } else {
+          cells[cellIndex].innerHTML = `<span class="text-xs font-medium bg-gray-700 px-2 py-1 rounded">${download.username || 'Unknown'}</span>`;
+        }
+        cellIndex++;
+      }
+
+      // Size
+      cells[cellIndex].textContent = formatFileSize(download.size);
+      cellIndex++;
+
+      // Progress
+      const progressBar = cells[cellIndex].querySelector('.bg-red-600');
+      const progressText = cells[cellIndex].querySelector('.text-xs');
+      if (progressBar && progressText) {
+        progressBar.style.width = `${progress}%`;
+        progressText.textContent = `${progress}%`;
+      }
+      cellIndex++;
+
+      // Status
+      cells[cellIndex].textContent = status;
+      cellIndex++;
+
+      // Speed
+      cells[cellIndex].textContent = `${formatFileSize(download.dlspeed)}/s`;
+      cellIndex++;
+
+      // ETA
+      cells[cellIndex].textContent = download.eta ? formatETA(download.eta) : 'N/A';
+      cellIndex++;
+
+      // Actions - no need to update as they're just buttons with onclick handlers
+    } else {
+      // Create new row
+      const newRow = document.createElement('tr');
+      newRow.setAttribute('data-hash', download.hash);
+
+      newRow.innerHTML = `
         <td class="max-w-xs truncate" title="${download.name}">${download.name}</td>
         ${showUserColumn ? `<td><span class="text-xs font-medium bg-gray-700 px-2 py-1 rounded">${download.username || 'Unknown'}</span></td>` : ''}
         <td>${formatFileSize(download.size)}</td>
@@ -1754,17 +1881,18 @@ function displayDownloads(downloads) {
             </button>
           </div>
         </td>
-      </tr>
-    `;
+      `;
+
+      tableBody.appendChild(newRow);
+    }
   });
 
-  html += `
-        </tbody>
-      </table>
-    </div>
-  `;
-
-  downloadsList.innerHTML = html;
+  // Remove rows that no longer exist
+  Object.keys(existingRows).forEach(hash => {
+    if (!updatedHashes.has(hash)) {
+      tableBody.removeChild(existingRows[hash]);
+    }
+  });
 }
 
 // Format ETA
@@ -1988,6 +2116,20 @@ async function deleteTorrent(hash, deleteFiles = false, keepFiles = false) {
   try {
     console.log(`${keepFiles ? 'Removing' : 'Deleting'} torrent with hash: ${hash}`);
 
+    // Find the row for this hash and add a visual indicator that it's being deleted
+    const tableBody = downloadsList.querySelector('tbody');
+    if (tableBody) {
+      const row = Array.from(tableBody.querySelectorAll('tr')).find(r =>
+        r.getAttribute('data-hash') === hash
+      );
+
+      if (row) {
+        // Add a visual indicator that the torrent is being deleted
+        row.style.opacity = '0.5';
+        row.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+      }
+    }
+
     const response = await fetch('/api/delete', {
       method: 'POST',
       headers: {
@@ -2016,14 +2158,66 @@ async function deleteTorrent(hash, deleteFiles = false, keepFiles = false) {
         showToast('Torrent deleted successfully', 'success');
       }
 
-      // Refresh downloads list
-      fetchDownloads();
+      // Remove the row from the table without refreshing the entire list
+      if (tableBody) {
+        const row = Array.from(tableBody.querySelectorAll('tr')).find(r =>
+          r.getAttribute('data-hash') === hash
+        );
+
+        if (row) {
+          // Animate the row removal
+          row.style.transition = 'all 0.3s';
+          row.style.opacity = '0';
+          row.style.maxHeight = '0';
+          row.style.overflow = 'hidden';
+
+          // Remove after animation
+          setTimeout(() => {
+            if (row.parentNode) {
+              row.parentNode.removeChild(row);
+
+              // If no more rows, show 'No active downloads'
+              if (tableBody.querySelectorAll('tr').length === 0) {
+                downloadsList.innerHTML = '<div class="text-center p-8">No active downloads</div>';
+              }
+            }
+          }, 300);
+        }
+      } else {
+        // Fallback to full refresh if we can't find the row
+        fetchDownloads();
+      }
     } else {
       showToast(data.message || 'Failed to delete torrent', 'error');
+
+      // Reset the row style if deletion failed
+      if (tableBody) {
+        const row = Array.from(tableBody.querySelectorAll('tr')).find(r =>
+          r.getAttribute('data-hash') === hash
+        );
+
+        if (row) {
+          row.style.opacity = '1';
+          row.style.backgroundColor = '';
+        }
+      }
     }
   } catch (error) {
     console.error('Error deleting torrent:', error);
     showToast('Error deleting torrent', 'error');
+
+    // Reset any visual indicators on error
+    const tableBody = downloadsList.querySelector('tbody');
+    if (tableBody) {
+      const row = Array.from(tableBody.querySelectorAll('tr')).find(r =>
+        r.getAttribute('data-hash') === hash
+      );
+
+      if (row) {
+        row.style.opacity = '1';
+        row.style.backgroundColor = '';
+      }
+    }
   }
 }
 
