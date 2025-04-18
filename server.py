@@ -17,6 +17,7 @@ import libs.logs as logs
 import libs.settings as settings
 import libs.passkeys as passkeys
 import libs.tokens as tokens
+import libs.downloads as downloads
 
 # Custom JSON encoder to handle bytes objects
 class BytesEncoder(json.JSONEncoder):
@@ -133,6 +134,12 @@ try:
     passkeys.init_passkeys_db()
 except Exception as e:
     print(f"[ERROR] Failed to initialize passkeys database: {e}")
+
+# Initialize downloads database
+try:
+    downloads.init_downloads_db()
+except Exception as e:
+    print(f"[ERROR] Failed to initialize downloads database: {e}")
 
 # Authentication middleware
 def auth_required(func):
@@ -523,6 +530,10 @@ def route_api_download():
 
             # Log successful download
             logs.log_download(current_user, name, infohash, downloadpath)
+
+            # Store download in downloads database
+            downloads.add_download(current_user, infohash, name, downloadpath)
+
             return jsonify({"success": True})
         # Log failed download due to qBittorrent error response
         logs.log_download_failed(current_user, name, infohash, f"qBittorrent error: {resp}")
@@ -619,8 +630,60 @@ def route_api_fetch():
         return jsonify({"success": False, "message": "Failed to authenticate with qBittorrent"}), 503
 
     try:
-        downloads = qbclient.torrents()
-        return jsonify(downloads)
+        # Get current user
+        current_user = users.get_current_user()
+        is_admin = users.is_admin()
+
+        # Get all torrents from qBittorrent
+        all_torrents = qbclient.torrents()
+
+        # Synchronize downloads database with qBittorrent
+        qb_hashes = [t['hash'] for t in all_torrents]
+        removed_count = downloads.sync_with_qbittorrent(qb_hashes)
+        if removed_count > 0:
+            print(f"[INFO] Cleaned up {removed_count} stale downloads from database")
+
+        # Purge old downloads (older than 30 days)
+        purged_count = downloads.purge_old_downloads(days=30)
+        if purged_count > 0:
+            print(f"[INFO] Purged {purged_count} old downloads from database")
+
+        # If user is not admin, filter torrents to only show their own
+        if not is_admin:
+            # Get user's downloads from our database
+            user_downloads = downloads.get_user_downloads(current_user)
+
+            # Create a set of hashes in both upper and lower case for case-insensitive matching
+            user_hashes = set()
+            for d in user_downloads:
+                user_hashes.add(d['hash'].lower())
+                user_hashes.add(d['hash'].upper())
+
+            # Filter torrents to only include those with hashes in user_downloads
+            filtered_torrents = [t for t in all_torrents if t['hash'] in user_hashes]
+            return jsonify(filtered_torrents)
+        else:
+            # For admins, add username information to each torrent
+            all_downloads = downloads.get_all_downloads()
+
+            # Create a hash map with both uppercase and lowercase versions of the hash
+            hash_to_user = {}
+            for d in all_downloads:
+                hash_to_user[d['hash'].lower()] = d['username']
+                hash_to_user[d['hash'].upper()] = d['username']
+
+            # Add username to each torrent if available
+            for torrent in all_torrents:
+                # Try to find the hash in our map (case insensitive)
+                torrent_hash = torrent['hash']
+                torrent['username'] = hash_to_user.get(torrent_hash, 'Unknown')
+
+                # Debug output
+                if torrent['username'] == 'Unknown':
+                    print(f"[DEBUG] Could not find user for hash: {torrent_hash}")
+                    print(f"[DEBUG] Available hashes: {list(hash_to_user.keys())}")
+
+            return jsonify(all_torrents)
     except Exception as e:
         print(f"[ERROR] Failed to fetch torrents: {str(e)}")
         return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
@@ -642,8 +705,29 @@ def route_api_delete():
         return jsonify({"success": False, "message": "Failed to authenticate with qBittorrent"}), 503
 
     try:
+        # Get current user for logging
+        current_user = users.get_current_user()
+
+        # Check if we have this download in our database before deleting
+        download_info = downloads.get_download_by_hash(hash_value)
+        if download_info:
+            print(f"[INFO] Found download in database: {download_info['name']} by {download_info['username']}")
+        else:
+            print(f"[INFO] Download with hash {hash_value} not found in database")
+
+        # Delete from qBittorrent
         qbclient.delete_permanently(hash_value)
         print(f"[INFO] Deleted torrent {hash_value} with delete_files={delete_files}")
+
+        # Remove download from downloads database
+        removed = downloads.remove_download(hash_value)
+        if removed:
+            print(f"[INFO] Successfully removed download with hash {hash_value} from database")
+            # Log the deletion
+            logs.log_event(current_user, "download_deleted", f"Deleted torrent {hash_value}")
+        else:
+            print(f"[WARNING] Failed to remove download with hash {hash_value} from database - not found")
+
         return jsonify({"success": True})
     except Exception as e:
         print(f"[ERROR] Failed to delete torrent {hash_value}: {str(e)}")

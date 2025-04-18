@@ -10,9 +10,11 @@ services:
     environment:
       - USERS_DB_PATH=/app/users.json
       - LOGS_DB_PATH=/app/logs.json
+      - DOWNLOADS_DB_PATH=/app/downloads.json
     volumes:
       - ./static:/app/static
       - ./users.json:/app/users.json
       - ./logs.json:/app/logs.json
+      - ./downloads.json:/app/downloads.json
       - ./flask_session:/app/flask_session
     restart: unless-stopped

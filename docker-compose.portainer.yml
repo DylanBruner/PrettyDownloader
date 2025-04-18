@@ -13,6 +13,7 @@ services:
       - USERS_DB_PATH=/data/users.json
       - LOGS_DB_PATH=/data/logs.json
       - SETTINGS_DB_PATH=/data/settings.json
+      - DOWNLOADS_DB_PATH=/data/downloads.json
     volumes:
       # Use a bind mount for the users.json file
       - prettydownloader_data:/data

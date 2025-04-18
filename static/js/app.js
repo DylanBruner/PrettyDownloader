@@ -1687,12 +1687,16 @@ function displayDownloads(downloads) {
     return;
   }
 
+  // Check if we have username information (admin view)
+  const showUserColumn = downloads.some(download => 'username' in download);
+
   let html = `
     <div class="overflow-x-auto">
       <table class="table w-full">
         <thead>
           <tr>
             <th>Name</th>
+            ${showUserColumn ? '<th>User</th>' : ''}
             <th>Size</th>
             <th>Progress</th>
             <th>Status</th>
@@ -1711,6 +1715,7 @@ function displayDownloads(downloads) {
     html += `
       <tr>
         <td class="max-w-xs truncate" title="${download.name}">${download.name}</td>
+        ${showUserColumn ? `<td><span class="text-xs font-medium bg-gray-700 px-2 py-1 rounded">${download.username || 'Unknown'}</span></td>` : ''}
         <td>${formatFileSize(download.size)}</td>
         <td>
           <div class="w-full bg-gray-700 rounded-full h-2.5">
@@ -1954,6 +1959,8 @@ async function deleteTorrent(hash, deleteFiles = false) {
   }
 
   try {
+    console.log(`Deleting torrent with hash: ${hash}`);
+
     const response = await fetch('/api/delete', {
       method: 'POST',
       headers: {
@@ -1966,6 +1973,7 @@ async function deleteTorrent(hash, deleteFiles = false) {
     });
 
     const data = await response.json();
+    console.log('Delete response:', data);
 
     if (response.status === 503) {
       // qBittorrent is disabled or authentication failed

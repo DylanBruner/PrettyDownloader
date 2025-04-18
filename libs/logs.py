@@ -197,6 +197,19 @@ def log_user_deleted(admin_username, deleted_username):
     }
     return add_log('user_deleted', admin_username, details)
 
+def log_event(username, event_type, message):
+    """Log a generic event
+
+    Args:
+        username (str): Username associated with the event
+        event_type (str): Type of event
+        message (str): Event message or details
+    """
+    details = {
+        'message': message
+    }
+    return add_log(event_type, username, details)
+
 def get_filtered_logs(log_type=None, username=None, limit=100):
     """Get logs filtered by type and/or username
 

@@ -495,6 +495,13 @@
     // Fetch user quotas
     async function fetchUserQuotas(username) {
       try {
+        // Make sure username is defined
+        if (!username) {
+          console.error('Username is undefined in fetchUserQuotas');
+          return;
+        }
+
+        console.log(`Fetching quotas for user: ${username}`);
         const response = await fetch(`/api/users/${username}/quotas`);
         const data = await response.json();
 
@@ -504,10 +511,11 @@
           document.getElementById('weekly-quota').value = data.quotas.weekly.limit || 0;
           document.getElementById('monthly-quota').value = data.quotas.monthly.limit || 0;
         } else {
+          console.error(`Failed to fetch quotas for user ${username}:`, data.message);
           alert(data.message || 'Failed to fetch user quotas');
         }
       } catch (error) {
-        console.error('Error fetching user quotas:', error);
+        console.error(`Error fetching quotas for user ${username}:`, error);
         alert('Error fetching user quotas');
       }
     }
