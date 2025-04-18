@@ -1737,13 +1737,22 @@ function displayDownloads(downloads) {
         <td>${formatFileSize(download.dlspeed)}/s</td>
         <td>${download.eta ? formatETA(download.eta) : 'N/A'}</td>
         <td>
-          <button
-            class="text-red-500 hover:text-red-700"
-            onclick="deleteTorrent('${download.hash}', true)"
-            title="Delete torrent and files"
-          >
-            <i class="fas fa-trash"></i>
-          </button>
+          <div class="flex space-x-2">
+            <button
+              class="text-yellow-500 hover:text-yellow-700"
+              onclick="deleteTorrent('${download.hash}', false, true)"
+              title="Remove from seeding (keep files)"
+            >
+              <i class="fas fa-eject"></i>
+            </button>
+            <button
+              class="text-red-500 hover:text-red-700"
+              onclick="deleteTorrent('${download.hash}', true)"
+              title="Delete torrent and files"
+            >
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
         </td>
       </tr>
     `;
@@ -1963,13 +1972,21 @@ function extractMetadata(filename) {
 }
 
 // Delete torrent
-async function deleteTorrent(hash, deleteFiles = false) {
-  if (!confirm('Are you sure you want to delete this torrent and its files?')) {
+async function deleteTorrent(hash, deleteFiles = false, keepFiles = false) {
+  let confirmMessage = '';
+
+  if (keepFiles) {
+    confirmMessage = 'Are you sure you want to remove this torrent from seeding but keep the files?';
+  } else {
+    confirmMessage = 'Are you sure you want to delete this torrent and its files?';
+  }
+
+  if (!confirm(confirmMessage)) {
     return;
   }
 
   try {
-    console.log(`Deleting torrent with hash: ${hash}`);
+    console.log(`${keepFiles ? 'Removing' : 'Deleting'} torrent with hash: ${hash}`);
 
     const response = await fetch('/api/delete', {
       method: 'POST',
@@ -1978,7 +1995,8 @@ async function deleteTorrent(hash, deleteFiles = false) {
       },
       body: JSON.stringify({
         hash: hash,
-        deleteFiles: deleteFiles
+        deleteFiles: deleteFiles,
+        keepFiles: keepFiles
       })
     });
 
@@ -1992,7 +2010,11 @@ async function deleteTorrent(hash, deleteFiles = false) {
     }
 
     if (response.ok && data.success) {
-      showToast('Torrent deleted successfully', 'success');
+      if (keepFiles) {
+        showToast('Torrent removed from seeding successfully', 'success');
+      } else {
+        showToast('Torrent deleted successfully', 'success');
+      }
 
       // Refresh downloads list
       fetchDownloads();
@@ -2254,3 +2276,4 @@ window.extractMetadata = extractMetadata;
 window.formatFileSize = formatFileSize;
 window.formatDate = formatDate;
 window.determineContentType = determineContentType;
+window.deleteTorrent = deleteTorrent;

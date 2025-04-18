@@ -710,6 +710,7 @@ def route_api_fetch():
 def route_api_delete():
     hash_value = request.json.get("hash")
     delete_files = request.json.get("deleteFiles", False)
+    keep_files = request.json.get("keepFiles", False)
 
     if not hash_value:
         return jsonify({"success": False, "message": "hash parameter is required"}), 400
@@ -732,16 +733,25 @@ def route_api_delete():
         else:
             print(f"[INFO] Download with hash {hash_value} not found in database")
 
-        # Delete from qBittorrent
-        qbclient.delete_permanently(hash_value)
-        print(f"[INFO] Deleted torrent {hash_value} with delete_files={delete_files}")
+        # Determine the action based on parameters
+        action_description = ""
+        if keep_files:
+            # Remove torrent but keep files
+            qbclient.delete(hash_value)
+            action_description = "Removed torrent from seeding (kept files)"
+            print(f"[INFO] Removed torrent {hash_value} from seeding (kept files)")
+        else:
+            # Delete torrent and optionally delete files
+            qbclient.delete_permanently(hash_value)
+            action_description = f"Deleted torrent and files"
+            print(f"[INFO] Deleted torrent {hash_value} with delete_files={delete_files}")
 
         # Remove download from downloads database
         removed = downloads.remove_download(hash_value)
         if removed:
             print(f"[INFO] Successfully removed download with hash {hash_value} from database")
-            # Log the deletion
-            logs.log_event(current_user, "download_deleted", f"Deleted torrent {hash_value}")
+            # Log the deletion with appropriate action description
+            logs.log_event(current_user, "download_deleted", f"{action_description} for {hash_value}")
         else:
             print(f"[WARNING] Failed to remove download with hash {hash_value} from database - not found")
 
