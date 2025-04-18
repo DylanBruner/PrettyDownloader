@@ -19,8 +19,8 @@ COPY static/ ./static/
 RUN mkdir -p flask_session
 RUN mkdir -p /data
 
-# Create initial settings file
-RUN echo '{"settings": {}}' > /data/settings.json
+# Set the data directory environment variable
+ENV DATA_DIR=/data
 
 # Create .env file - these will be overridden by environment variables
 RUN echo "# QB Config\nqb-url = \"http://host.docker.internal:30024/\"\nqb-user=\"admin\"\nqb-password=\"adminadmin\"" > .env

@@ -1,9 +1,10 @@
 import os
 import json
 import datetime
+import libs.config as config
 
 # Path to the downloads database file
-DOWNLOADS_DB_PATH = os.environ.get('DOWNLOADS_DB_PATH', 'downloads.json')
+DOWNLOADS_DB_PATH = config.DOWNLOADS_DB_PATH
 
 def init_downloads_db():
     """Initialize the downloads database if it doesn't exist"""

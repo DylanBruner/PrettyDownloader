@@ -13,6 +13,7 @@ from libs.providers.sample_provider import SampleProvider
 from libs.providers.yts_provider import YTSProvider
 from libs.tmdbclient import TMDBClient
 from qbittorrent import Client
+import libs.config as config
 import libs.users as users
 import libs.logs as logs
 import libs.settings as settings
@@ -108,6 +109,13 @@ app.config["SESSION_USE_SIGNER"] = True
 app.config["SECRET_KEY"] = secrets.token_hex(16)  # Generate a random secret key
 app.json_encoder = BytesEncoder  # Use custom JSON encoder for bytes objects
 Session(app)
+
+# Initialize data directory
+try:
+    config.ensure_data_dir()
+    print(f"[INFO] Using data directory: {config.DATA_DIR}")
+except Exception as e:
+    print(f"[ERROR] Failed to initialize data directory: {e}")
 
 # Initialize users database
 try:

@@ -8,13 +8,9 @@ services:
     env_file:
       - .env
     environment:
-      - USERS_DB_PATH=/app/users.json
-      - LOGS_DB_PATH=/app/logs.json
-      - DOWNLOADS_DB_PATH=/app/downloads.json
+      - DATA_DIR=/app/data
     volumes:
       - ./static:/app/static
-      - ./users.json:/app/users.json
-      - ./logs.json:/app/logs.json
-      - ./downloads.json:/app/downloads.json
+      - ./data:/app/data
       - ./flask_session:/app/flask_session
     restart: unless-stopped

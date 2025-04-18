@@ -27,12 +27,7 @@ MANIFEST
 !.env.example
 
 # User data and sessions
-users.json
-logs.json
-downloads.json
-settings.json
-invites.json
-passkeys.json
+data/
 flask_session/
 
 # Docker

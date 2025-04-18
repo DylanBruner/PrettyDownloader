@@ -118,9 +118,15 @@ The following environment variables can be set in the `.env` file or through Doc
 - `qb-user`: qBittorrent username
 - `qb-password`: qBittorrent password
 - `disable-qb`: Set to "true" to disable qBittorrent integration
+- `DATA_DIR`: Directory to store all JSON database files (default: "data")
+
+Alternatively, you can set individual database file paths (these override the DATA_DIR setting):
 - `USERS_DB_PATH`: Path to the users database file
 - `LOGS_DB_PATH`: Path to the logs database file
 - `SETTINGS_DB_PATH`: Path to the settings database file
+- `DOWNLOADS_DB_PATH`: Path to the downloads database file
+- `PASSKEYS_DB_PATH`: Path to the passkeys database file
+- `INVITES_DB_PATH`: Path to the invites database file
 
 ### Web Interface Settings
 

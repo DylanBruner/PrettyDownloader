@@ -2,9 +2,10 @@ import os
 import json
 import dotenv
 from flask import session
+import libs.config as config
 
 # Path to the settings database file
-SETTINGS_DB_PATH = os.environ.get('SETTINGS_DB_PATH', 'settings.json')
+SETTINGS_DB_PATH = config.SETTINGS_DB_PATH
 
 def init_settings_db():
     """Initialize the settings database if it doesn't exist"""

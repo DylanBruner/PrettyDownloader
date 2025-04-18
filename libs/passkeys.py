@@ -17,9 +17,10 @@ from webauthn.helpers.structs import (
 from webauthn.helpers import bytes_to_base64url, base64url_to_bytes
 import libs.users as users
 import libs.tokens as tokens
+import libs.config as config
 
 # Path to the passkeys database file
-PASSKEYS_DB_PATH = os.environ.get('PASSKEYS_DB_PATH', 'passkeys.json')
+PASSKEYS_DB_PATH = config.PASSKEYS_DB_PATH
 
 # WebAuthn configuration
 # These settings determine how passkeys work with your domain

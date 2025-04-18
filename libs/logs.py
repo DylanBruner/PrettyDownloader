@@ -3,9 +3,10 @@ import json
 import datetime
 from datetime import timedelta
 from flask import session
+import libs.config as config
 
 # Path to the logs database file
-LOGS_DB_PATH = os.environ.get('LOGS_DB_PATH', 'logs.json')
+LOGS_DB_PATH = config.LOGS_DB_PATH
 
 def init_logs_db():
     """Initialize the logs database if it doesn't exist"""

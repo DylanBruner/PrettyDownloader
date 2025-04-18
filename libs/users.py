@@ -6,9 +6,10 @@ from datetime import timedelta
 from flask import session
 import libs.tokens as tokens
 import libs.logs as logs
+import libs.config as config
 
 # Path to the users database file
-USERS_DB_PATH = os.environ.get('USERS_DB_PATH', 'users.json')
+USERS_DB_PATH = config.USERS_DB_PATH
 
 def init_users_db():
     """Initialize the users database if it doesn't exist"""
