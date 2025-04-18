@@ -31,6 +31,7 @@ users.json
 logs.json
 downloads.json
 settings.json
+invites.json
 passkeys.json
 flask_session/
 

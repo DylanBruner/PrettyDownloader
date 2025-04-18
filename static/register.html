@@ -226,8 +226,12 @@
       </p>
     </div>
 
-    <div class="mt-6 text-center text-sm text-gray-400">
+    <div id="approval-message" class="mt-6 text-center text-sm text-gray-400">
       <p>Your account will require admin approval before you can log in.</p>
+    </div>
+
+    <div id="invite-message" class="mt-6 text-center text-sm text-gray-400 hidden">
+      <p>You are registering with an invite link. Your account will be activated immediately.</p>
     </div>
   </div>
 
@@ -271,6 +275,51 @@
       }, 3000);
     }
 
+    // Check for invite code in URL parameters
+    function getInviteCodeFromUrl() {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get('invite');
+    }
+
+    // Validate invite code
+    async function validateInviteCode(inviteCode) {
+      try {
+        const response = await fetch(`/api/invites/validate/${inviteCode}`);
+        const data = await response.json();
+
+        return {
+          valid: data.valid,
+          message: data.message,
+          invite: data.invite
+        };
+      } catch (error) {
+        console.error('Error validating invite code:', error);
+        return { valid: false, message: 'Error validating invite code' };
+      }
+    }
+
+    // Check for invite code on page load
+    document.addEventListener('DOMContentLoaded', async function() {
+      const inviteCode = getInviteCodeFromUrl();
+
+      if (inviteCode) {
+        // Validate the invite code
+        const validation = await validateInviteCode(inviteCode);
+
+        if (validation.valid) {
+          // Show invite message instead of approval message
+          document.getElementById('approval-message').classList.add('hidden');
+          document.getElementById('invite-message').classList.remove('hidden');
+
+          // Show success toast
+          showToast('Valid invite code detected!', 'success');
+        } else {
+          // Show error toast
+          showToast(validation.message || 'Invalid invite code', 'error');
+        }
+      }
+    });
+
     // Handle registration form submission
     document.getElementById('register-form').addEventListener('submit', async function(e) {
       e.preventDefault();
@@ -278,6 +327,7 @@
       const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value;
       const confirmPassword = document.getElementById('confirm-password').value;
+      const inviteCode = getInviteCodeFromUrl();
 
       // Validate form
       if (!username || !password) {
@@ -291,21 +341,39 @@
       }
 
       try {
-        const response = await fetch('/api/register', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            username: username,
-            password: password
-          })
-        });
+        let response;
+
+        if (inviteCode) {
+          // Register with invite code
+          response = await fetch('/api/register/invite', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              username: username,
+              password: password,
+              invite_code: inviteCode
+            })
+          });
+        } else {
+          // Regular registration
+          response = await fetch('/api/register', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              username: username,
+              password: password
+            })
+          });
+        }
 
         const data = await response.json();
 
         if (data.success) {
-          showToast(data.message || 'Registration successful! Your account is pending approval.', 'success');
+          showToast(data.message || 'Registration successful!', 'success');
 
           // Clear form
           document.getElementById('username').value = '';

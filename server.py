@@ -19,6 +19,7 @@ import libs.settings as settings
 import libs.passkeys as passkeys
 import libs.tokens as tokens
 import libs.downloads as downloads
+import libs.invites as invites
 
 # Custom JSON encoder to handle bytes objects
 class BytesEncoder(json.JSONEncoder):
@@ -141,6 +142,12 @@ try:
     downloads.init_downloads_db()
 except Exception as e:
     print(f"[ERROR] Failed to initialize downloads database: {e}")
+
+# Initialize invites database
+try:
+    invites.init_invites_db()
+except Exception as e:
+    print(f"[ERROR] Failed to initialize invites database: {e}")
 
 # Authentication middleware
 def auth_required(func):
@@ -1467,6 +1474,169 @@ def route_api_users_reject(username):
         logs.log_user_rejected(admin_username, username)
 
     return jsonify({"success": success, "message": message})
+
+# Invite link API routes
+@app.route("/api/invites", methods=["GET"])
+@auth_required
+@admin_required
+def route_api_invites_get():
+    """Get all invite links"""
+    try:
+        invites_data = invites.get_invites()
+
+        # Clean expired invites
+        invites.clean_expired_invites()
+
+        return jsonify({
+            "success": True,
+            "invites": invites_data["invites"]
+        })
+    except Exception as e:
+        print(f"[ERROR] Failed to fetch invites: {str(e)}")
+        return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
+
+@app.route("/api/invites", methods=["POST"])
+@auth_required
+@admin_required
+def route_api_invites_create():
+    """Create a new invite link"""
+    try:
+        # Get parameters from request
+        expiry_days = request.json.get("expiry_days", 7)
+        max_uses = request.json.get("max_uses", 1)
+        is_admin = request.json.get("is_admin", False)
+        daily_quota = request.json.get("daily_quota")
+        weekly_quota = request.json.get("weekly_quota")
+        monthly_quota = request.json.get("monthly_quota")
+
+        # If quotas not specified, use default settings
+        if daily_quota is None:
+            daily_quota = settings.get_effective_settings().get("default-daily-quota", 0)
+        if weekly_quota is None:
+            weekly_quota = settings.get_effective_settings().get("default-weekly-quota", 0)
+        if monthly_quota is None:
+            monthly_quota = settings.get_effective_settings().get("default-monthly-quota", 0)
+
+        # Get current admin username
+        admin_username = users.get_current_user()
+
+        # Create invite
+        success, message, invite_code = invites.create_invite(
+            admin_username,
+            expiry_days=expiry_days,
+            max_uses=max_uses,
+            is_admin=is_admin,
+            daily_quota=daily_quota,
+            weekly_quota=weekly_quota,
+            monthly_quota=monthly_quota
+        )
+
+        if success:
+            # Get the full invite data
+            invite_data = invites.get_invite_by_code(invite_code)
+
+            return jsonify({
+                "success": True,
+                "message": message,
+                "invite": invite_data
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "message": message
+            })
+    except Exception as e:
+        print(f"[ERROR] Failed to create invite: {str(e)}")
+        return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
+
+@app.route("/api/invites/<invite_code>", methods=["DELETE"])
+@auth_required
+@admin_required
+def route_api_invites_delete(invite_code):
+    """Delete an invite link"""
+    try:
+        # Get current admin username
+        admin_username = users.get_current_user()
+
+        # Delete invite
+        success, message = invites.delete_invite(invite_code, admin_username)
+
+        return jsonify({
+            "success": success,
+            "message": message
+        })
+    except Exception as e:
+        print(f"[ERROR] Failed to delete invite: {str(e)}")
+        return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
+
+@app.route("/api/invites/validate/<invite_code>", methods=["GET"])
+def route_api_invites_validate(invite_code):
+    """Validate an invite code (public endpoint)"""
+    try:
+        # Validate invite
+        is_valid, message, invite_data = invites.validate_invite(invite_code)
+
+        # Don't return the full invite data for security reasons
+        safe_data = None
+        if is_valid and invite_data:
+            safe_data = {
+                "code": invite_data["code"],
+                "expires_at": invite_data["expires_at"],
+                "created_at": invite_data["created_at"]
+            }
+
+        return jsonify({
+            "success": True,
+            "valid": is_valid,
+            "message": message,
+            "invite": safe_data
+        })
+    except Exception as e:
+        print(f"[ERROR] Failed to validate invite: {str(e)}")
+        return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
+
+# Modify the registration endpoint to support invite codes
+@app.route("/api/register/invite", methods=["POST"])
+def route_api_register_with_invite():
+    """Register a new user with an invite code"""
+    try:
+        username = request.json.get("username")
+        password = request.json.get("password")
+        invite_code = request.json.get("invite_code")
+
+        if not username or not password or not invite_code:
+            return jsonify({"success": False, "message": "Username, password, and invite code are required"})
+
+        # Validate the invite code
+        is_valid, message, invite_data = invites.validate_invite(invite_code)
+
+        if not is_valid:
+            return jsonify({"success": False, "message": message})
+
+        # Create user with the settings from the invite
+        success, message = users.create_user(
+            username,
+            password,
+            is_admin=invite_data["is_admin"],
+            daily_quota=invite_data["daily_quota"],
+            weekly_quota=invite_data["weekly_quota"],
+            monthly_quota=invite_data["monthly_quota"],
+            pending_approval=False  # No approval needed for invited users
+        )
+
+        if success:
+            # Mark the invite as used
+            invites.use_invite(invite_code)
+
+            # Log user registration
+            logs.log_event(username, "user_registered_with_invite", f"User registered with invite code {invite_code}")
+
+            message = "Registration successful. You can now log in."
+
+        return jsonify({"success": success, "message": message})
+    except Exception as e:
+        print(f"[ERROR] Failed to register with invite: {str(e)}")
+        return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
 
 # Start the application
 app.run("0.0.0.0", port=80, debug=True)
