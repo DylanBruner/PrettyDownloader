@@ -1,29 +1,52 @@
 # PrettyDownloader
 
-PrettyDownloader is a web-based torrent search and download manager that integrates with qBittorrent to provide a clean, user-friendly interface for searching and managing torrent downloads.
+PrettyDownloader is a web-based torrent search and download manager with a modern, responsive interface. It integrates with qBittorrent for torrent management and TMDB for media information, providing a seamless experience for finding and downloading movies, TV shows, and other content.
 
-![PrettyDownloader](static/img/favicon.png)
+![PrettyDownloader](static/img/icon-192x192.png)
 
 ## Features
 
-- **Torrent Search**: Search for torrents using The Pirate Bay API
-- **Download Management**: Start, monitor, and delete torrent downloads
-- **User Authentication**: Secure login system with hashed passwords
-- **User Management**: Admin interface for creating, editing, and deleting users
-- **Logging System**: Track downloads, login attempts, and user management actions
-- **Settings Management**: Configure qBittorrent connection details through a web interface
-- **Responsive Design**: Mobile-friendly interface with a clean, modern look
-- **Docker Support**: Easy deployment using Docker and Docker Compose
+### Search and Media Integration
+- **TMDB Integration**: Search for movies and TV shows with rich metadata and images
+- **Multiple Torrent Providers**: Search across various torrent providers simultaneously
+- **Direct Search**: Skip TMDB and search torrent providers directly with advanced filtering
+- **Metadata Extraction**: Automatically extracts quality, season, episode, and year information from torrent names
+- **Content Filtering**: Option to hide adult content in search results
+
+### Download Management
+- **qBittorrent Integration**: Seamlessly download torrents to your qBittorrent client
+- **Download Path Selection**: Automatically select appropriate download paths based on content type
+- **Multi-torrent Selection**: Select and download multiple torrents at once
+- **Download Tracking**: Associate downloads with users and track download history
+- **Torrent Management**: Remove torrents from seeding while keeping downloaded files
+
+### User Management
+- **Authentication**: Secure login with hashed passwords and token-based authentication
+- **Passkey Support**: WebAuthn/passkey authentication for passwordless login
+- **User Roles**: Admin, regular, and readonly user permissions
+- **User Quotas**: Daily, weekly, and monthly download limits for users
+- **Invitation System**: Invite-only registration with admin approval option
+- **User Suspension**: Temporarily suspend users without deleting them
+
+### Progressive Web App
+- **Installable**: Install as a standalone app on mobile and desktop devices
+- **Responsive Design**: Optimized for both desktop and mobile viewing
+- **Offline Support**: Service worker for caching content where possible
+
+### Administration
+- **Server Settings**: Configure application settings through the web interface
+- **User Management**: Create, edit, and manage users with different permission levels
+- **Activity Logs**: Track login attempts, downloads, and user management events
+- **Provider Management**: Enable/disable and configure torrent providers
 
 ## Installation
 
 ### Prerequisites
-
 - Python 3.9 or higher
 - qBittorrent with Web UI enabled
-- Docker and Docker Compose (for containerized deployment)
+- Docker (optional, for containerized deployment)
 
-### Local Development Setup
+### Local Installation
 
 1. Clone the repository:
    ```bash
@@ -36,11 +59,18 @@ PrettyDownloader is a web-based torrent search and download manager that integra
    pip install -r requirements.txt
    ```
 
-3. Create a `.env` file with your qBittorrent connection details:
+3. Create a `.env` file with your configuration:
    ```
+   # qBittorrent Configuration
    qb-url = "http://localhost:8080/"
    qb-user = "admin"
    qb-password = "adminadmin"
+
+   # TMDB API Key (optional)
+   tmdb-api-key = "your_tmdb_api_key"
+
+   # Data Directory
+   DATA_DIR = "data"
    ```
 
 4. Run the application:
@@ -50,117 +80,120 @@ PrettyDownloader is a web-based torrent search and download manager that integra
 
 5. Access the application at http://localhost:80
 
-### Docker Setup
+### Docker Installation
 
-1. Clone the repository:
+1. Build the Docker image:
    ```bash
-   git clone https://github.com/yourusername/PrettyDownloader.git
-   cd PrettyDownloader
+   docker build -t prettydownloader:latest .
    ```
 
-2. Build and run the Docker container:
+2. Run the container:
    ```bash
-   docker-compose up -d
+   docker run -d -p 8080:80 \
+     -e qb-url="http://host.docker.internal:8080/" \
+     -e qb-user="admin" \
+     -e qb-password="adminadmin" \
+     -e tmdb-api-key="your_tmdb_api_key" \
+     -v /path/to/data:/data \
+     --name prettydownloader \
+     prettydownloader:latest
    ```
 
 3. Access the application at http://localhost:8080
-
-## Usage
-
-### Authentication
-
-The application uses a simple authentication system. On first run, a default admin user is created:
-- Username: `admin`
-- Password: `admin`
-
-For security reasons, you should change this password after the first login.
-
-### Search for Torrents
-
-1. Log in to the application
-2. Use the search bar on the home page to search for torrents
-3. Browse through the search results
-4. Click the download button next to a torrent to start downloading
-
-### Manage Downloads
-
-1. Navigate to the Downloads page
-2. View the status of your current downloads
-3. Delete torrents and their files as needed
-
-### User Management (Admin Only)
-
-1. Navigate to the Users page
-2. Create new users
-3. Toggle admin status for users
-4. Delete users
-5. Change user passwords
-
-### View Logs (Admin Only)
-
-1. Navigate to the Logs page
-2. View logs of downloads, login attempts, and user management actions
-3. Filter logs by type or username
-
-### Configure Settings (Admin Only)
-
-1. Navigate to the Settings page
-2. Configure qBittorrent connection details
-3. Enable or disable qBittorrent integration
 
 ## Configuration
 
 ### Environment Variables
 
-The following environment variables can be set in the `.env` file or through Docker environment variables:
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `qb-url` | URL to qBittorrent Web UI | `http://localhost:8080/` |
+| `qb-user` | qBittorrent username | `admin` |
+| `qb-password` | qBittorrent password | `adminadmin` |
+| `disable-qb` | Disable qBittorrent integration | `false` |
+| `tmdb-api-key` | TMDB API key for media information | `""` |
+| `DATA_DIR` | Directory to store all JSON database files | `data` |
+| `RP_ID` | Relying Party ID for WebAuthn/passkeys | `localhost` |
+| `RP_NAME` | Relying Party name for WebAuthn/passkeys | `PrettyDownloader` |
+| `RP_ORIGIN` | Relying Party origin for WebAuthn/passkeys | `http://localhost` |
+| `auto-prompt-passkeys` | Auto-prompt for passkey login | `true` |
+| `hide-adult-content` | Filter out adult content from search results | `true` |
 
-- `qb-url`: URL to your qBittorrent Web UI (e.g., http://localhost:8080/)
-- `qb-user`: qBittorrent username
-- `qb-password`: qBittorrent password
-- `disable-qb`: Set to "true" to disable qBittorrent integration
-- `DATA_DIR`: Directory to store all JSON database files (default: "data")
+### Server Settings
 
-Alternatively, you can set individual database file paths (these override the DATA_DIR setting):
-- `USERS_DB_PATH`: Path to the users database file
-- `LOGS_DB_PATH`: Path to the logs database file
-- `SETTINGS_DB_PATH`: Path to the settings database file
-- `DOWNLOADS_DB_PATH`: Path to the downloads database file
-- `PASSKEYS_DB_PATH`: Path to the passkeys database file
-- `INVITES_DB_PATH`: Path to the invites database file
+All environment variables can also be configured through the Server Settings page in the web interface. Settings configured through the web interface override the values in the `.env` file.
 
-### Web Interface Settings
+## Usage
 
-Settings can also be configured through the web interface. These settings override the values in the `.env` file.
+### Initial Login
 
-## Deployment
+The default admin credentials are:
+- Username: `admin`
+- Password: `admin`
 
-### Docker Deployment
+For security reasons, change the default password after the first login.
 
-See the [DEPLOYMENT.md](DEPLOYMENT.md) file for detailed instructions on deploying PrettyDownloader using Docker.
+### Adding Users
 
-### Portainer Deployment
+1. Navigate to the Users page (admin only)
+2. Click "Add User"
+3. Fill in the username, password, and quota settings
+4. Choose the user role (admin, regular, or readonly)
+5. Click "Create User"
 
-A `docker-compose.portainer.yml` file is provided for easy deployment to Portainer:
+### Searching for Content
 
-1. Upload the `docker-compose.portainer.yml` file to your Portainer instance
-2. Create a new stack using this file
-3. Configure the environment variables as needed
-4. Deploy the stack
+1. Enter a search term in the search box
+2. Select the media type filter (All, Movies, TV Shows)
+3. Click "Search"
+4. Click on a search result to view available torrents
+5. Select torrents to download and click "Download Selected"
 
-## Security Considerations
+### Direct Search
 
-- Change the default admin password immediately after installation
-- Use HTTPS if deploying to a public server
-- Regularly check the logs for suspicious activity
-- Keep the application and its dependencies updated
+1. Navigate to the Direct Search page
+2. Enter a search term
+3. Apply filters as needed (quality, year, etc.)
+4. Select torrents to download and click "Download Selected"
+
+### Managing Downloads
+
+1. Navigate to the Downloads page
+2. View all your downloads (admins can see all users' downloads)
+3. Use the action menu to manage torrents (delete, remove from seeding, etc.)
+
+## Documentation
+
+- [Provider System](PROVIDER_SYSTEM.md): Documentation for the torrent provider plugin system
+- [Deployment Guide](DEPLOYMENT.md): Guide for deploying PrettyDownloader to your server
+
+## Development
+
+### Project Structure
+
+- `server.py`: Main Flask application
+- `libs/`: Library modules
+  - `providers/`: Torrent provider implementations
+  - `tmdbclient.py`: TMDB API client
+  - `users.py`: User management
+  - `downloads.py`: Download tracking
+  - `passkeys.py`: WebAuthn/passkey implementation
+  - `config.py`: Configuration management
+  - `logs.py`: Logging system
+  - `settings.py`: Settings management
+  - `invites.py`: Invitation system
+- `static/`: Static files (HTML, CSS, JS)
+  - `js/`: JavaScript files
+  - `css/`: CSS files
+  - `img/`: Images and icons
+
+### Adding a New Torrent Provider
+
+1. Create a new provider class in `libs/providers/`
+2. Implement the required methods (search, get_torrent_details, etc.)
+3. Register the provider in `server.py`
+4. See [Provider System](PROVIDER_SYSTEM.md) documentation for detailed instructions
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgements
-
-- [The Pirate Bay API](https://apibay.org) for torrent search functionality
-- [qBittorrent](https://www.qbittorrent.org/) for download management
-- [Flask](https://flask.palletsprojects.com/) for the web framework
-- [Tailwind CSS](https://tailwindcss.com/) for styling
+[MIT License](LICENSE)
