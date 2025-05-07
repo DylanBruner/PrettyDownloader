@@ -164,7 +164,21 @@ For security reasons, change the default password after the first login.
 
 ## Documentation
 
-- [Provider System](PROVIDER_SYSTEM.md): Documentation for the torrent provider plugin system
+### Provider System
+
+PrettyDownloader uses a modular provider system that allows for easy integration of different torrent sources. The system is designed to be extensible, making it simple to add new torrent providers without modifying the core application code.
+
+Key features:
+- Abstract base class defining the provider interface
+- Provider manager for registering and managing providers
+- Ability to enable/disable providers through the UI
+- Standardized search result format
+- Filtering and sorting of combined results
+
+For detailed information on implementing new providers, see the [Provider System Documentation](PROVIDER_SYSTEM.md).
+
+### Deployment
+
 - [Deployment Guide](DEPLOYMENT.md): Guide for deploying PrettyDownloader to your server
 
 ## Development
