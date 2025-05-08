@@ -951,32 +951,39 @@
 
     // Fetch user quotas for the modal
     async function fetchUserQuotasForModal(username) {
+      if (!username) {
+        console.error('Username is required');
+        return;
+      }
+
       try {
-        // Make sure username is defined
-        if (!username) {
-          console.error('Username is undefined in fetchUserQuotasForModal');
+        const response = await fetch(`/api/users/${username}/quotas`);
+        const rawText = await response.text();
+        console.log('Raw server response:', rawText);
+        
+        let data;
+        try {
+          data = JSON.parse(rawText);
+        } catch (parseError) {
+          console.error('Failed to parse JSON:', parseError);
+          alert('Error: Server returned invalid JSON response');
           return;
         }
 
-        console.log(`Fetching quotas for user: ${username}`);
-        const response = await fetch(`/api/users/${username}/quotas`);
-        const data = await response.json();
+        if (data.success) {
+          const quotas = data.quotas;
+          document.getElementById('daily-quota').value = quotas.daily.limit;
+          document.getElementById('weekly-quota').value = quotas.weekly.limit;
+          document.getElementById('monthly-quota').value = quotas.monthly.limit;
 
-        if (data.success && data.quotas) {
-          // Populate form with quotas
-          document.getElementById('daily-quota').value = data.quotas.daily.limit || 0;
-          document.getElementById('weekly-quota').value = data.quotas.weekly.limit || 0;
-          document.getElementById('monthly-quota').value = data.quotas.monthly.limit || 0;
-
-          // Populate temporary increase fields if they exist
-          if (data.quotas.temp_increase) {
-            document.getElementById('temp-daily-quota').value = data.quotas.temp_increase.daily || 0;
-            document.getElementById('temp-weekly-quota').value = data.quotas.temp_increase.weekly || 0;
-            document.getElementById('temp-monthly-quota').value = data.quotas.temp_increase.monthly || 0;
-            
-            if (data.quotas.temp_increase.expires_at) {
-              const expiryDate = new Date(data.quotas.temp_increase.expires_at);
-              document.getElementById('temp-expiry').value = expiryDate.toISOString().slice(0, 16);
+          // Handle temporary increase
+          if (quotas.temp_increase) {
+            document.getElementById('temp-daily-quota').value = quotas.temp_increase.daily || 0;
+            document.getElementById('temp-weekly-quota').value = quotas.temp_increase.weekly || 0;
+            document.getElementById('temp-monthly-quota').value = quotas.temp_increase.monthly || 0;
+            if (quotas.temp_increase.expires_at) {
+              const expiryDate = new Date(quotas.temp_increase.expires_at);
+              document.getElementById('temp-expiry').value = expiryDate.toISOString().split('T')[0];
             }
           } else {
             // Reset temporary increase fields

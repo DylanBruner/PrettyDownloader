@@ -558,7 +558,7 @@ def get_user_quotas(username):
         if user['username'] == username:
             # Initialize quotas if they don't exist
             if 'quotas' not in user:
-                now = datetime.datetime.now().isoformat()
+                now = datetime.datetime.now(datetime.timezone.utc).isoformat()
                 user['quotas'] = {
                     'daily': {'limit': 0, 'used': 0, 'reset_date': now},
                     'weekly': {'limit': 0, 'used': 0, 'reset_date': now},
@@ -574,16 +574,12 @@ def get_user_quotas(username):
                 temp_increase = quotas['temp_increase']
                 if temp_increase.get('expires_at'):
                     expires_at = datetime.datetime.fromisoformat(temp_increase['expires_at'])
-                    if datetime.datetime.now() > expires_at:
+                    if expires_at.tzinfo is None:
+                        expires_at = expires_at.replace(tzinfo=datetime.timezone.utc)
+                    if datetime.datetime.now(datetime.timezone.utc) > expires_at:
                         # Remove expired temporary increase
                         quotas['temp_increase'] = None
                         save_users(users_data)
-                    else:
-                        # Add temporary increase to limits
-                        quotas['daily']['temp_limit'] = quotas['daily']['limit'] + temp_increase.get('daily', 0)
-                        quotas['weekly']['temp_limit'] = quotas['weekly']['limit'] + temp_increase.get('weekly', 0)
-                        quotas['monthly']['temp_limit'] = quotas['monthly']['limit'] + temp_increase.get('monthly', 0)
-                        quotas['temp_increase']['expires_at'] = temp_increase['expires_at']
 
             return quotas
 
