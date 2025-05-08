@@ -375,7 +375,7 @@ def reject_user(username):
     return False, "User not found"
 
 # Quota management functions
-def update_user_quotas(username, daily_quota=None, weekly_quota=None, monthly_quota=None):
+def update_user_quotas(username, daily_quota=None, weekly_quota=None, monthly_quota=None, temp_increase=None):
     """Update a user's quota limits"""
     print(f"[INFO] Updating quotas for user: {username}")
     users_data = get_users()
@@ -388,7 +388,8 @@ def update_user_quotas(username, daily_quota=None, weekly_quota=None, monthly_qu
                 user['quotas'] = {
                     'daily': {'limit': 0, 'used': 0, 'reset_date': now},
                     'weekly': {'limit': 0, 'used': 0, 'reset_date': now},
-                    'monthly': {'limit': 0, 'used': 0, 'reset_date': now}
+                    'monthly': {'limit': 0, 'used': 0, 'reset_date': now},
+                    'temp_increase': None
                 }
 
             # Update quota limits if provided
@@ -398,6 +399,8 @@ def update_user_quotas(username, daily_quota=None, weekly_quota=None, monthly_qu
                 user['quotas']['weekly']['limit'] = weekly_quota
             if monthly_quota is not None:
                 user['quotas']['monthly']['limit'] = monthly_quota
+            if temp_increase is not None:
+                user['quotas']['temp_increase'] = temp_increase
 
             print(f"[INFO] Updated quotas for {username}: daily={user['quotas']['daily']['limit']}, weekly={user['quotas']['weekly']['limit']}, monthly={user['quotas']['monthly']['limit']}")
             save_users(users_data)
@@ -475,23 +478,43 @@ def check_quota_limits(username):
                 return True, None
 
             quotas = user['quotas']
+            
+            # Initialize limits with base values
+            daily_limit = quotas['daily']['limit']
+            weekly_limit = quotas['weekly']['limit']
+            monthly_limit = quotas['monthly']['limit']
+            
+            # Check if temporary increase has expired
+            if quotas.get('temp_increase'):
+                temp_increase = quotas['temp_increase']
+                if temp_increase.get('expires_at'):
+                    expires_at = datetime.datetime.fromisoformat(temp_increase['expires_at'])
+                    if datetime.datetime.now() > expires_at:
+                        # Remove expired temporary increase
+                        quotas['temp_increase'] = None
+                        save_users(users_data)
+                    else:
+                        # Apply temporary increase
+                        daily_limit += temp_increase.get('daily', 0)
+                        weekly_limit += temp_increase.get('weekly', 0)
+                        monthly_limit += temp_increase.get('monthly', 0)
 
             # Check daily quota
-            if quotas['daily']['limit'] > 0 and quotas['daily']['used'] >= quotas['daily']['limit']:
+            if daily_limit > 0 and quotas['daily']['used'] >= daily_limit:
                 # Log quota exceeded event
-                logs.log_quota_exceeded(username, 'daily', quotas['daily']['limit'], quotas['daily']['used'])
+                logs.log_quota_exceeded(username, 'daily', daily_limit, quotas['daily']['used'])
                 return False, "Daily download quota exceeded"
 
             # Check weekly quota
-            if quotas['weekly']['limit'] > 0 and quotas['weekly']['used'] >= quotas['weekly']['limit']:
+            if weekly_limit > 0 and quotas['weekly']['used'] >= weekly_limit:
                 # Log quota exceeded event
-                logs.log_quota_exceeded(username, 'weekly', quotas['weekly']['limit'], quotas['weekly']['used'])
+                logs.log_quota_exceeded(username, 'weekly', weekly_limit, quotas['weekly']['used'])
                 return False, "Weekly download quota exceeded"
 
             # Check monthly quota
-            if quotas['monthly']['limit'] > 0 and quotas['monthly']['used'] >= quotas['monthly']['limit']:
+            if monthly_limit > 0 and quotas['monthly']['used'] >= monthly_limit:
                 # Log quota exceeded event
-                logs.log_quota_exceeded(username, 'monthly', quotas['monthly']['limit'], quotas['monthly']['used'])
+                logs.log_quota_exceeded(username, 'monthly', monthly_limit, quotas['monthly']['used'])
                 return False, "Monthly download quota exceeded"
 
             return True, None
@@ -539,10 +562,29 @@ def get_user_quotas(username):
                 user['quotas'] = {
                     'daily': {'limit': 0, 'used': 0, 'reset_date': now},
                     'weekly': {'limit': 0, 'used': 0, 'reset_date': now},
-                    'monthly': {'limit': 0, 'used': 0, 'reset_date': now}
+                    'monthly': {'limit': 0, 'used': 0, 'reset_date': now},
+                    'temp_increase': None
                 }
                 save_users(users_data)
 
-            return user['quotas']
+            quotas = user['quotas']
+            
+            # Check if temporary increase has expired
+            if quotas.get('temp_increase'):
+                temp_increase = quotas['temp_increase']
+                if temp_increase.get('expires_at'):
+                    expires_at = datetime.datetime.fromisoformat(temp_increase['expires_at'])
+                    if datetime.datetime.now() > expires_at:
+                        # Remove expired temporary increase
+                        quotas['temp_increase'] = None
+                        save_users(users_data)
+                    else:
+                        # Add temporary increase to limits
+                        quotas['daily']['temp_limit'] = quotas['daily']['limit'] + temp_increase.get('daily', 0)
+                        quotas['weekly']['temp_limit'] = quotas['weekly']['limit'] + temp_increase.get('weekly', 0)
+                        quotas['monthly']['temp_limit'] = quotas['monthly']['limit'] + temp_increase.get('monthly', 0)
+                        quotas['temp_increase']['expires_at'] = temp_increase['expires_at']
+
+            return quotas
 
     return None

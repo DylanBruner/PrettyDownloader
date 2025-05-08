@@ -460,42 +460,40 @@ def route_api_users_change_own_password():
     print(f"[INFO] Password change result: success={success}, message={message}")
     return jsonify({"success": success, "message": message})
 
-@app.route("/api/users/<username>/quotas", methods=["GET"])
+@app.route('/api/users/<username>/quotas', methods=['GET', 'POST'])
 @auth_required
 @admin_required
-def route_api_users_get_quotas(username):
-    print(f"[INFO] Getting quotas for user: {username}")
-    quotas = users.get_user_quotas(username)
-
-    if quotas:
-        return jsonify({"success": True, "quotas": quotas})
-    else:
+def route_api_user_quotas(username):
+    """Get or update a user's quota information"""
+    if request.method == 'GET':
+        quotas = users.get_user_quotas(username)
+        if quotas:
+            return jsonify({"success": True, "quotas": quotas})
         return jsonify({"success": False, "message": "User not found"}), 404
 
-@app.route("/api/users/<username>/quotas", methods=["POST"])
-@auth_required
-@admin_required
-def route_api_users_update_quotas(username):
-    print(f"[INFO] Updating quotas for user: {username}")
-    daily_quota = request.json.get("daily_quota")
-    weekly_quota = request.json.get("weekly_quota")
-    monthly_quota = request.json.get("monthly_quota")
+    elif request.method == 'POST':
+        data = request.json
+        daily_quota = data.get('daily_quota')
+        weekly_quota = data.get('weekly_quota')
+        monthly_quota = data.get('monthly_quota')
+        temp_increase = data.get('temp_increase')
 
-    # Convert to integers if provided
-    if daily_quota is not None:
-        daily_quota = int(daily_quota)
-    if weekly_quota is not None:
-        weekly_quota = int(weekly_quota)
-    if monthly_quota is not None:
-        monthly_quota = int(monthly_quota)
+        success, message = users.update_user_quotas(
+            username,
+            daily_quota=daily_quota,
+            weekly_quota=weekly_quota,
+            monthly_quota=monthly_quota,
+            temp_increase=temp_increase
+        )
 
-    success, message = users.update_user_quotas(username, daily_quota, weekly_quota, monthly_quota)
-    print(f"[INFO] Quota update result: success={success}, message={message}")
-    return jsonify({"success": success, "message": message})
+        if success:
+            return jsonify({"success": True, "message": message})
+        return jsonify({"success": False, "message": message}), 400
 
 @app.route("/api/users/self/quotas", methods=["GET"])
 @auth_required
 def route_api_users_get_own_quotas():
+    """Get the current user's quota information"""
     username = users.get_current_user()
     print(f"[INFO] Getting quotas for current user: {username}")
     quotas = users.get_user_quotas(username)

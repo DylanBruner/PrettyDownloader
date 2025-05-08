@@ -197,7 +197,7 @@
   <!-- Edit Quota Modal -->
   <div id="quota-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
     <div class="absolute inset-0 bg-black bg-opacity-50"></div>
-    <div class="card p-6 max-w-md w-full z-10">
+    <div class="card p-4 md:p-6 w-[95%] sm:w-[85%] md:w-[600px] z-10">
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-semibold">Edit Download Quotas</h3>
         <button onclick="hideQuotaModal()" class="text-gray-400 hover:text-white">
@@ -208,38 +208,65 @@
       <p class="mb-4">Edit quotas for: <span id="quota-username" class="font-semibold"></span></p>
       <p class="text-sm text-gray-400 mb-4">Set to 0 for unlimited downloads.</p>
 
-      <form id="quota-form" class="mt-4">
-        <div class="mb-4">
-          <label for="daily-quota" class="block text-sm font-medium mb-2">Daily Quota</label>
-          <input type="number" id="daily-quota" class="form-input w-full" min="0" step="1" required>
-          <p class="text-xs text-gray-400 mt-1">Maximum downloads per day</p>
+      <form id="quota-form" class="mt-2">
+        <!-- Regular Quotas -->
+        <div class="mb-3">
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="text-sm font-medium">Regular Quotas</h4>
+            <span class="text-xs text-gray-400">0 = unlimited</span>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label for="daily-quota" class="block text-xs font-medium mb-1">Daily</label>
+              <input type="number" id="daily-quota" class="form-input w-full" min="0" step="1" required>
+            </div>
+
+            <div>
+              <label for="weekly-quota" class="block text-xs font-medium mb-1">Weekly</label>
+              <input type="number" id="weekly-quota" class="form-input w-full" min="0" step="1" required>
+            </div>
+
+            <div>
+              <label for="monthly-quota" class="block text-xs font-medium mb-1">Monthly</label>
+              <input type="number" id="monthly-quota" class="form-input w-full" min="0" step="1" required>
+            </div>
+          </div>
         </div>
 
-        <div class="mb-4">
-          <label for="weekly-quota" class="block text-sm font-medium mb-2">Weekly Quota</label>
-          <input type="number" id="weekly-quota" class="form-input w-full" min="0" step="1" required>
-          <p class="text-xs text-gray-400 mt-1">Maximum downloads per week</p>
+        <!-- Temporary Increase -->
+        <div class="mb-3">
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="text-sm font-medium">Temporary Increase</h4>
+            <span class="text-xs text-gray-400">Optional</span>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label for="temp-daily-quota" class="block text-xs font-medium mb-1">Daily</label>
+              <input type="number" id="temp-daily-quota" class="form-input w-full" min="0" step="1" value="0">
+            </div>
+
+            <div>
+              <label for="temp-weekly-quota" class="block text-xs font-medium mb-1">Weekly</label>
+              <input type="number" id="temp-weekly-quota" class="form-input w-full" min="0" step="1" value="0">
+            </div>
+
+            <div>
+              <label for="temp-monthly-quota" class="block text-xs font-medium mb-1">Monthly</label>
+              <input type="number" id="temp-monthly-quota" class="form-input w-full" min="0" step="1" value="0">
+            </div>
+          </div>
+          <div class="mt-2">
+            <label for="temp-expiry" class="block text-xs font-medium mb-1">Expiry Date</label>
+            <input type="datetime-local" id="temp-expiry" class="form-input w-full">
+          </div>
         </div>
 
-        <div class="mb-4">
-          <label for="monthly-quota" class="block text-sm font-medium mb-2">Monthly Quota</label>
-          <input type="number" id="monthly-quota" class="form-input w-full" min="0" step="1" required>
-          <p class="text-xs text-gray-400 mt-1">Maximum downloads per month</p>
-        </div>
-
-        <div class="flex justify-end gap-2 mt-6">
-          <button
-            type="button"
-            onclick="hideQuotaModal()"
-            class="btn bg-gray-600 text-white hover:bg-gray-700"
-          >
+        <div class="flex justify-end space-x-3 mt-4">
+          <button type="button" onclick="hideQuotaModal()" class="btn btn-secondary">
             Cancel
           </button>
-          <button
-            type="submit"
-            class="btn btn-primary"
-          >
-            <i class="fas fa-save mr-1"></i> Save
+          <button type="submit" class="btn btn-primary">
+            Save Changes
           </button>
         </div>
       </form>
@@ -646,15 +673,25 @@
                       <span class="text-gray-400">D:</span>
                       <span class="${user.quotas.daily.limit > 0 ? 'text-green-500' : 'text-gray-400'}">
                         ${user.quotas.daily.used}/${user.quotas.daily.limit || '∞'}
+                        ${user.quotas.temp_increase && user.quotas.temp_increase.daily > 0 ? 
+                          `<span class="text-yellow-500">(+${user.quotas.temp_increase.daily})</span>` : ''}
                       </span>
                       <span class="text-gray-400">W:</span>
                       <span class="${user.quotas.weekly.limit > 0 ? 'text-green-500' : 'text-gray-400'}">
                         ${user.quotas.weekly.used}/${user.quotas.weekly.limit || '∞'}
+                        ${user.quotas.temp_increase && user.quotas.temp_increase.weekly > 0 ? 
+                          `<span class="text-yellow-500">(+${user.quotas.temp_increase.weekly})</span>` : ''}
                       </span>
                       <span class="text-gray-400">M:</span>
                       <span class="${user.quotas.monthly.limit > 0 ? 'text-green-500' : 'text-gray-400'}">
                         ${user.quotas.monthly.used}/${user.quotas.monthly.limit || '∞'}
+                        ${user.quotas.temp_increase && user.quotas.temp_increase.monthly > 0 ? 
+                          `<span class="text-yellow-500">(+${user.quotas.temp_increase.monthly})</span>` : ''}
                       </span>
+                      ${user.quotas.temp_increase && user.quotas.temp_increase.expires_at ? 
+                        `<span class="text-yellow-500 ml-2" title="Temporary increase expires: ${new Date(user.quotas.temp_increase.expires_at).toLocaleString()}">
+                          <i class="fas fa-clock"></i>
+                        </span>` : ''}
                     </div>
                     <button
                       class="text-yellow-500 hover:text-yellow-700"
@@ -930,6 +967,24 @@
           document.getElementById('daily-quota').value = data.quotas.daily.limit || 0;
           document.getElementById('weekly-quota').value = data.quotas.weekly.limit || 0;
           document.getElementById('monthly-quota').value = data.quotas.monthly.limit || 0;
+
+          // Populate temporary increase fields if they exist
+          if (data.quotas.temp_increase) {
+            document.getElementById('temp-daily-quota').value = data.quotas.temp_increase.daily || 0;
+            document.getElementById('temp-weekly-quota').value = data.quotas.temp_increase.weekly || 0;
+            document.getElementById('temp-monthly-quota').value = data.quotas.temp_increase.monthly || 0;
+            
+            if (data.quotas.temp_increase.expires_at) {
+              const expiryDate = new Date(data.quotas.temp_increase.expires_at);
+              document.getElementById('temp-expiry').value = expiryDate.toISOString().slice(0, 16);
+            }
+          } else {
+            // Reset temporary increase fields
+            document.getElementById('temp-daily-quota').value = 0;
+            document.getElementById('temp-weekly-quota').value = 0;
+            document.getElementById('temp-monthly-quota').value = 0;
+            document.getElementById('temp-expiry').value = '';
+          }
         } else {
           console.error(`Failed to fetch quotas for user ${username}:`, data.message);
           alert(data.message || 'Failed to fetch user quotas');
@@ -953,6 +1008,23 @@
           const weeklyQuota = parseInt(document.getElementById('weekly-quota').value) || 0;
           const monthlyQuota = parseInt(document.getElementById('monthly-quota').value) || 0;
 
+          // Get temporary increase values
+          const tempDailyQuota = parseInt(document.getElementById('temp-daily-quota').value) || 0;
+          const tempWeeklyQuota = parseInt(document.getElementById('temp-weekly-quota').value) || 0;
+          const tempMonthlyQuota = parseInt(document.getElementById('temp-monthly-quota').value) || 0;
+          const tempExpiry = document.getElementById('temp-expiry').value;
+
+          // Create temporary increase object if any values are set
+          let tempIncrease = null;
+          if (tempDailyQuota > 0 || tempWeeklyQuota > 0 || tempMonthlyQuota > 0) {
+            tempIncrease = {
+              daily: tempDailyQuota,
+              weekly: tempWeeklyQuota,
+              monthly: tempMonthlyQuota,
+              expires_at: tempExpiry ? new Date(tempExpiry).toISOString() : null
+            };
+          }
+
           try {
             const response = await fetch(`/api/users/${username}/quotas`, {
               method: 'POST',
@@ -962,7 +1034,8 @@
               body: JSON.stringify({
                 daily_quota: dailyQuota,
                 weekly_quota: weeklyQuota,
-                monthly_quota: monthlyQuota
+                monthly_quota: monthlyQuota,
+                temp_increase: tempIncrease
               })
             });
 
