@@ -573,9 +573,11 @@ def get_user_quotas(username):
             if quotas.get('temp_increase'):
                 temp_increase = quotas['temp_increase']
                 if temp_increase.get('expires_at'):
-                    expires_at = datetime.datetime.fromisoformat(temp_increase['expires_at'])
-                    if expires_at.tzinfo is None:
-                        expires_at = expires_at.replace(tzinfo=datetime.timezone.utc)
+                    # Handle ISO format with 'Z' timezone indicator
+                    expires_str = temp_increase['expires_at']
+                    if expires_str.endswith('Z'):
+                        expires_str = expires_str[:-1] + '+00:00'
+                    expires_at = datetime.datetime.fromisoformat(expires_str)
                     if datetime.datetime.now(datetime.timezone.utc) > expires_at:
                         # Remove expired temporary increase
                         quotas['temp_increase'] = None
