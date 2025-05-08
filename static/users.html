@@ -962,7 +962,7 @@
         const response = await fetch(`/api/users/${username}/quotas`);
         const data = await response.json();
 
-        if (data.success) {
+        if (data.success && data.quotas) {
           // Populate form with quotas
           document.getElementById('daily-quota').value = data.quotas.daily.limit || 0;
           document.getElementById('weekly-quota').value = data.quotas.weekly.limit || 0;
