@@ -367,7 +367,7 @@ function displayDirectSearchResults(results, skipFilterUpdate = false) {
 
   // Create results HTML
   let html = `
-    <div class="mb-4 flex justify-between items-center">
+    <div class="mb-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
       <div class="text-sm text-gray-400">
         ${directSearchFilters.liveSearch ?
           `Showing ${filteredResults.length} of ${filteredDirectResults.length} filtered results` :
@@ -378,12 +378,20 @@ function displayDirectSearchResults(results, skipFilterUpdate = false) {
           ''
         }
       </div>
-      <div>
+      <div class="flex flex-wrap gap-2">
         <button
           id="select-all-btn"
-          class="btn btn-sm bg-gray-700 hover:bg-gray-600 mr-2"
+          class="btn btn-sm bg-gray-700 hover:bg-gray-600"
         >
           <i class="fas fa-check-square mr-1"></i> Select All
+        </button>
+        <button
+          id="select-seasons-btn"
+          class="btn btn-sm bg-purple-600 hover:bg-purple-700"
+          onclick="selectAllDirectSeasons()"
+          title="Select best complete season pack for each season (ignores individual episodes)"
+        >
+          <i class="fas fa-tv mr-1"></i> Select Complete Show
         </button>
         <button
           id="download-selected-btn"
@@ -681,6 +689,146 @@ function toggleAllDirectTorrents(checked) {
   updateSelectedDirectTorrents();
 }
 
+// Select all seasons in the range (1 to highest season found)
+function selectAllDirectSeasons() {
+  const checkboxes = document.querySelectorAll('.direct-torrent-checkbox');
+  let maxSeason = 0;
+  let selectedCount = 0;
+
+  // First pass: find the highest season number from complete seasons only
+  checkboxes.forEach(checkbox => {
+    const torrentName = checkbox.getAttribute('data-name');
+    if (torrentName) {
+      const metadata = extractMetadata(torrentName);
+
+      // Only check complete seasons, ignore individual episodes
+      if (metadata.complete && typeof metadata.complete === 'number') {
+        maxSeason = Math.max(maxSeason, metadata.complete);
+      }
+    }
+  });
+
+  if (maxSeason === 0) {
+    showToast('No complete TV show seasons found to select', 'info');
+    return;
+  }
+
+  // Group complete seasons by season number
+  const seasonGroups = {};
+  
+  checkboxes.forEach(checkbox => {
+    const torrentName = checkbox.getAttribute('data-name');
+    if (torrentName) {
+      const metadata = extractMetadata(torrentName);
+
+      // Only consider complete seasons in our range, ignore individual episodes
+      if (metadata.complete && typeof metadata.complete === 'number') {
+        const seasonNum = metadata.complete;
+        if (seasonNum >= 1 && seasonNum <= maxSeason) {
+          if (!seasonGroups[seasonNum]) {
+            seasonGroups[seasonNum] = [];
+          }
+
+          // Get torrent info for comparison
+          const torrentRow = checkbox.closest('tr') || checkbox.closest('.card');
+          let seeders = 0;
+          let size = 0;
+
+          if (torrentRow) {
+            // Try to extract seeders from the torrent data
+            const seedersElement = torrentRow.querySelector('.text-green-500');
+            if (seedersElement) {
+              const seedersText = seedersElement.textContent.trim();
+              seeders = parseInt(seedersText.replace(/[^\d]/g, '')) || 0;
+            }
+
+            // Try to extract size
+            const sizeElement = torrentRow.querySelector('[class*="fas fa-hdd"]');
+            if (sizeElement && sizeElement.parentElement) {
+              const sizeText = sizeElement.parentElement.textContent.trim();
+              // Basic size parsing - could be improved
+              if (sizeText.includes('GB')) {
+                const gbMatch = sizeText.match(/(\d+(?:\.\d+)?)\s*GB/);
+                if (gbMatch) size = parseFloat(gbMatch[1]) * 1024; // Convert to MB for comparison
+              } else if (sizeText.includes('MB')) {
+                const mbMatch = sizeText.match(/(\d+(?:\.\d+)?)\s*MB/);
+                if (mbMatch) size = parseFloat(mbMatch[1]);
+              }
+            }
+          }
+
+          seasonGroups[seasonNum].push({
+            checkbox,
+            metadata,
+            seeders,
+            size,
+            name: torrentName
+          });
+        }
+      }
+
+      // Special case: if it's marked as "All" seasons, add it as a separate option
+      if (metadata.complete === 'All') {
+        if (!seasonGroups['All']) {
+          seasonGroups['All'] = [];
+        }
+
+        const torrentRow = checkbox.closest('tr') || checkbox.closest('.card');
+        let seeders = 0;
+
+        if (torrentRow) {
+          const seedersElement = torrentRow.querySelector('.text-green-500');
+          if (seedersElement) {
+            const seedersText = seedersElement.textContent.trim();
+            seeders = parseInt(seedersText.replace(/[^\d]/g, '')) || 0;
+          }
+        }
+
+        seasonGroups['All'].push({
+          checkbox,
+          metadata,
+          seeders,
+          size: 0,
+          name: torrentName
+        });
+      }
+    }
+  });
+
+  // Select the best torrent for each season
+  for (const seasonNum in seasonGroups) {
+    const torrents = seasonGroups[seasonNum];
+    if (torrents.length > 0) {
+      // Sort by seeders (descending), then by size (descending) as tiebreaker
+      torrents.sort((a, b) => {
+        if (b.seeders !== a.seeders) {
+          return b.seeders - a.seeders; // Higher seeders first
+        }
+        return b.size - a.size; // Larger size as tiebreaker
+      });
+
+      // Select the best one
+      const bestTorrent = torrents[0];
+      bestTorrent.checkbox.checked = true;
+      selectedCount++;
+    }
+  }
+
+  // Update the selected torrents
+  updateSelectedDirectTorrents();
+
+  // Show a toast notification
+  if (selectedCount > 0) {
+    if (seasonGroups['All'] && seasonGroups['All'].length > 0) {
+      showToast(`Selected ${selectedCount} season packs (including complete series)`, 'success');
+    } else {
+      showToast(`Selected ${selectedCount} season packs from seasons 1-${maxSeason}`, 'success');
+    }
+  } else {
+    showToast('No complete season packs found to select', 'info');
+  }
+}
+
 // Update selected direct search torrents
 function updateSelectedDirectTorrents() {
   const checkboxes = document.querySelectorAll('.direct-torrent-checkbox');
@@ -787,3 +935,4 @@ function downloadSelectedDirectTorrents() {
 window.toggleAllDirectTorrents = toggleAllDirectTorrents;
 window.updateSelectedDirectTorrents = updateSelectedDirectTorrents;
 window.downloadSelectedDirectTorrents = downloadSelectedDirectTorrents;
+window.selectAllDirectSeasons = selectAllDirectSeasons;

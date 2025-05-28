@@ -49,6 +49,25 @@
         </div>
       </div>
 
+      <!-- Total Progress Section -->
+      <div class="card p-6 mt-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold">Total Download Progress</h3>
+          <div class="text-sm text-gray-400">
+            <span id="total-downloaded">0 GB</span> / <span id="total-size">0 GB</span>
+          </div>
+        </div>
+        
+        <div class="w-full bg-gray-700 rounded-full h-3 mb-2">
+          <div id="total-progress-bar" class="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+        </div>
+        
+        <div class="flex justify-between items-center text-sm text-gray-400">
+          <span id="total-progress-percentage">0%</span>
+          <span id="total-files-info">0 files</span>
+        </div>
+      </div>
+
       <!-- Download stats -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
         <div class="card p-4">
@@ -108,12 +127,21 @@
         document.getElementById('total-download-speed').textContent = '0 KB/s';
         document.getElementById('completed-count').textContent = '0';
         document.getElementById('in-progress-count').textContent = '0';
+        
+        // Reset total progress
+        document.getElementById('total-downloaded').textContent = '0 GB';
+        document.getElementById('total-size').textContent = '0 GB';
+        document.getElementById('total-progress-bar').style.width = '0%';
+        document.getElementById('total-progress-percentage').textContent = '0%';
+        document.getElementById('total-files-info').textContent = '0 files';
         return;
       }
 
       let totalDownloadSpeed = 0;
       let completedCount = 0;
       let inProgressCount = 0;
+      let totalDownloaded = 0;
+      let totalSize = 0;
 
       downloads.forEach(download => {
         totalDownloadSpeed += download.dlspeed;
@@ -123,11 +151,27 @@
         } else {
           inProgressCount++;
         }
+
+        // Calculate total progress
+        if (download.size) {
+          totalSize += download.size;
+          totalDownloaded += download.size * download.progress;
+        }
       });
 
+      // Update existing stats
       document.getElementById('total-download-speed').textContent = formatFileSize(totalDownloadSpeed) + '/s';
       document.getElementById('completed-count').textContent = completedCount;
       document.getElementById('in-progress-count').textContent = inProgressCount;
+
+      // Update total progress
+      const totalProgressPercentage = totalSize > 0 ? (totalDownloaded / totalSize) * 100 : 0;
+      
+      document.getElementById('total-downloaded').textContent = formatFileSize(totalDownloaded);
+      document.getElementById('total-size').textContent = formatFileSize(totalSize);
+      document.getElementById('total-progress-bar').style.width = totalProgressPercentage + '%';
+      document.getElementById('total-progress-percentage').textContent = totalProgressPercentage.toFixed(1) + '%';
+      document.getElementById('total-files-info').textContent = downloads.length + ' file' + (downloads.length !== 1 ? 's' : '');
     }
 
     // Auto-refresh downloads every 10 seconds with smooth updates
