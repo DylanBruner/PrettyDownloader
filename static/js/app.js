@@ -1669,9 +1669,18 @@ async function fetchDownloads() {
     const isEmpty = downloadsList.innerHTML.trim() === '' ||
                    downloadsList.innerHTML.includes('No active downloads') ||
                    downloadsList.innerHTML.includes('loader');
+    
+    const mobileDownloadsList = document.getElementById('mobile-downloads-list');
+    const mobileIsEmpty = !mobileDownloadsList || mobileDownloadsList.innerHTML.trim() === '' ||
+                         mobileDownloadsList.innerHTML.includes('No active downloads') ||
+                         mobileDownloadsList.innerHTML.includes('loader');
 
     if (isEmpty) {
       downloadsList.innerHTML = '<div class="flex justify-center p-8"><div class="loader"></div></div>';
+    }
+    
+    if (mobileIsEmpty && mobileDownloadsList) {
+      mobileDownloadsList.innerHTML = '<div class="flex justify-center p-8"><div class="loader"></div></div>';
     }
 
     const response = await fetch('/api/fetch');
@@ -1679,12 +1688,20 @@ async function fetchDownloads() {
 
     if (response.status === 503) {
       // qBittorrent is disabled or authentication failed
-      downloadsList.innerHTML = `<div class="text-center p-8 text-yellow-500">${data.message || 'qBittorrent service unavailable'}</div>`;
+      const errorMessage = `<div class="text-center p-8 text-yellow-500">${data.message || 'qBittorrent service unavailable'}</div>`;
+      downloadsList.innerHTML = errorMessage;
+      if (mobileDownloadsList) {
+        mobileDownloadsList.innerHTML = errorMessage;
+      }
       return;
     }
 
     if (!response.ok) {
-      downloadsList.innerHTML = `<div class="text-center p-8 text-red-500">${data.message || 'Error fetching downloads'}</div>`;
+      const errorMessage = `<div class="text-center p-8 text-red-500">${data.message || 'Error fetching downloads'}</div>`;
+      downloadsList.innerHTML = errorMessage;
+      if (mobileDownloadsList) {
+        mobileDownloadsList.innerHTML = errorMessage;
+      }
       return;
     }
 
@@ -1694,14 +1711,14 @@ async function fetchDownloads() {
     console.error('Error fetching downloads:', error);
     // Only update error message if there's a real error, don't flash
     if (!downloadsList.querySelector('table')) {
-      downloadsList.innerHTML = '<div class="text-center p-8 text-red-500">Error fetching downloads. Please try again.</div>';
+      const errorMessage = '<div class="text-center p-8 text-red-500">Error fetching downloads. Please try again.</div>';
+      downloadsList.innerHTML = errorMessage;
+      const mobileDownloadsList = document.getElementById('mobile-downloads-list');
+      if (mobileDownloadsList && !mobileDownloadsList.querySelector('.mobile-download-card')) {
+        mobileDownloadsList.innerHTML = errorMessage;
+      }
     }
   }
-}
-
-// Original display downloads function (kept for compatibility)
-function displayDownloads(downloads) {
-  updateDownloadsDisplay(downloads);
 }
 
 // Update downloads display without flashing
@@ -1713,9 +1730,23 @@ function updateDownloadsDisplay(downloads) {
 
   if (!downloads || downloads.length === 0) {
     downloadsList.innerHTML = '<div class="text-center p-8">No active downloads</div>';
+    // Also update mobile list
+    const mobileDownloadsList = document.getElementById('mobile-downloads-list');
+    if (mobileDownloadsList) {
+      mobileDownloadsList.innerHTML = '<div class="text-center p-8">No active downloads</div>';
+    }
     return;
   }
 
+  // Update desktop table view
+  updateDesktopDownloadsView(downloads);
+  
+  // Update mobile cards view
+  updateMobileDownloadsView(downloads);
+}
+
+// Update desktop table view
+function updateDesktopDownloadsView(downloads) {
   // Check if we have username information (admin view)
   const showUserColumn = downloads.some(download => 'username' in download);
 
@@ -1893,6 +1924,134 @@ function updateDownloadsDisplay(downloads) {
       tableBody.removeChild(existingRows[hash]);
     }
   });
+}
+
+// Update mobile cards view
+function updateMobileDownloadsView(downloads) {
+  const mobileDownloadsList = document.getElementById('mobile-downloads-list');
+  if (!mobileDownloadsList) return;
+
+  // Check if we have username information (admin view)
+  const showUserColumn = downloads.some(download => 'username' in download);
+
+  // Create a map of existing cards by hash
+  const existingCards = {};
+  Array.from(mobileDownloadsList.querySelectorAll('[data-hash]')).forEach(card => {
+    const hash = card.getAttribute('data-hash');
+    if (hash) existingCards[hash] = card;
+  });
+
+  // Track which hashes we've updated
+  const updatedHashes = new Set();
+
+  // Update or add cards
+  downloads.forEach(download => {
+    const progress = Math.round(download.progress * 100);
+    const status = download.state.charAt(0).toUpperCase() + download.state.slice(1);
+    updatedHashes.add(download.hash);
+
+    if (existingCards[download.hash]) {
+      // Update existing card
+      const card = existingCards[download.hash];
+      
+      // Update name
+      const nameElement = card.querySelector('.mobile-download-name');
+      if (nameElement) {
+        nameElement.textContent = download.name;
+        nameElement.setAttribute('title', download.name);
+      }
+
+      // Update user (if shown)
+      if (showUserColumn) {
+        const userElement = card.querySelector('.mobile-download-user');
+        if (userElement) {
+          userElement.textContent = download.username || 'Unknown';
+        }
+      }
+
+      // Update progress
+      const progressBar = card.querySelector('.mobile-progress-bar');
+      const progressText = card.querySelector('.mobile-progress-text');
+      if (progressBar && progressText) {
+        progressBar.style.width = `${progress}%`;
+        progressText.textContent = `${progress}%`;
+      }
+
+      // Update meta info
+      const sizeElement = card.querySelector('.mobile-download-size');
+      const statusElement = card.querySelector('.mobile-download-status');
+      const speedElement = card.querySelector('.mobile-download-speed');
+      const etaElement = card.querySelector('.mobile-download-eta');
+
+      if (sizeElement) sizeElement.textContent = formatFileSize(download.size);
+      if (statusElement) statusElement.textContent = status;
+      if (speedElement) speedElement.textContent = `${formatFileSize(download.dlspeed)}/s`;
+      if (etaElement) etaElement.textContent = download.eta ? formatETA(download.eta) : 'N/A';
+
+    } else {
+      // Create new card
+      const newCard = document.createElement('div');
+      newCard.className = 'mobile-download-card';
+      newCard.setAttribute('data-hash', download.hash);
+
+      newCard.innerHTML = `
+        <div class="mobile-download-name" title="${download.name}">${download.name}</div>
+        ${showUserColumn ? `<div class="mb-2"><span class="text-xs font-medium bg-gray-600 px-2 py-1 rounded mobile-download-user">${download.username || 'Unknown'}</span></div>` : ''}
+        <div class="mobile-download-progress">
+          <div class="w-full bg-gray-600 rounded-full h-2 mb-1">
+            <div class="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full mobile-progress-bar transition-all duration-500" style="width: ${progress}%"></div>
+          </div>
+          <div class="text-center text-sm mobile-progress-text">${progress}%</div>
+        </div>
+        <div class="mobile-download-meta">
+          <div><span class="text-gray-400">Size:</span> <span class="mobile-download-size">${formatFileSize(download.size)}</span></div>
+          <div><span class="text-gray-400">Status:</span> <span class="mobile-download-status">${status}</span></div>
+          <div><span class="text-gray-400">Speed:</span> <span class="mobile-download-speed">${formatFileSize(download.dlspeed)}/s</span></div>
+          <div><span class="text-gray-400">ETA:</span> <span class="mobile-download-eta">${download.eta ? formatETA(download.eta) : 'N/A'}</span></div>
+        </div>
+        <div class="mobile-download-actions">
+          <button
+            class="text-yellow-500 hover:text-yellow-700 p-2"
+            onclick="deleteTorrent('${download.hash}', false, true)"
+            title="Remove from seeding (keep files)"
+          >
+            <i class="fas fa-eject"></i>
+          </button>
+          <button
+            class="text-red-500 hover:text-red-700 p-2"
+            onclick="deleteTorrent('${download.hash}', true)"
+            title="Delete torrent and files"
+          >
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      `;
+
+      mobileDownloadsList.appendChild(newCard);
+    }
+  });
+
+  // Remove cards that no longer exist
+  Object.keys(existingCards).forEach(hash => {
+    if (!updatedHashes.has(hash)) {
+      mobileDownloadsList.removeChild(existingCards[hash]);
+    }
+  });
+
+  // Clear any loading message when we have content
+  if (downloads.length > 0) {
+    const loadingDiv = mobileDownloadsList.querySelector('.flex.justify-center');
+    if (loadingDiv) {
+      mobileDownloadsList.removeChild(loadingDiv);
+    }
+    // Also clear any error messages when we have successful data
+    const errorDivs = mobileDownloadsList.querySelectorAll('.text-center.p-8');
+    errorDivs.forEach(div => {
+      if (div.textContent.includes('Error') || div.textContent.includes('unavailable')) {
+        mobileDownloadsList.removeChild(div);
+      }
+    });
+  }
 }
 
 // Format ETA
@@ -2471,3 +2630,8 @@ window.formatFileSize = formatFileSize;
 window.formatDate = formatDate;
 window.determineContentType = determineContentType;
 window.deleteTorrent = deleteTorrent;
+
+// Original display downloads function (kept for compatibility)
+function displayDownloads(downloads) {
+  updateDownloadsDisplay(downloads);
+}
