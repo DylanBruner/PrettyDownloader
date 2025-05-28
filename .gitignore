@@ -78,3 +78,4 @@ static/css/*.min.css
 
 # Node modules (if you add any frontend build tools)
 node_modules/
+users.json
